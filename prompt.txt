@@ -1,0 +1,34 @@
+Now, I want it to create an Interface class, so that for every new class/struct, I can create on static/uniform WGPUVertexBufferLayout.
+e.g.
+class Vertex: public Interface {
+    float[3] position;
+
+    virtual static WGPUVertexBufferLayout desc();
+}
+
+and throughout the whole runtime, I want to Vertex::desc() to return a valid WGPUVertexBufferLayout that points to valid pointer.
+I want it so that I won't have to write anything on the main function like:
+(I don't want)
+int main(int argc, char **argv) {
+    WGPUVertexBufferLayoutBuilder builder;
+    builder.addVertexAttribute(/*stuff*/);
+    builder.addVertexAttribute(/*stuff*/);
+    builder.addVertexAttribute(/*stuff*/);
+    builder.addVertexAttribute(/*stuff*/);
+    WGPUVertexBufferLayout layout = builder.build();
+    return 0;
+}
+
+Instead I want:
+
+class Vertex: public Interface {
+    float[3] position;
+
+    virtual static WGPUVertexBufferLayout desc();
+}
+
+int main(int argc, char **argv) {
+    WGPUVertexBufferLayout layout = Vertex::desc();
+    
+    return 0;
+}
