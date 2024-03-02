@@ -91,7 +91,7 @@ WGPUSurface glfwGetWGPUSurface(GLFWwindow* window, WGPUInstance instance) {
         HWND hwnd = glfwGetWin32Window(window);
         HINSTANCE hinstance = GetModuleHandle(NULL);
         WGPUSurfaceDescriptorFromWindowsHWND surfaceFromHWNDWindow{
-            .chain WGPUChainedStruct{
+            .chain = WGPUChainedStruct{
                 .next = NULL,
                 .sType = WGPUSType_SurfaceDescriptorFromWindowsHWND,
             },

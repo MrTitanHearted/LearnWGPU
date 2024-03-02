@@ -1,3 +1,0 @@
-[submodule "wgpu-cmake"]
-	path = wgpu-cmake
-	url = https://github.com/MrTitanHearted/wgpu-cmake.git

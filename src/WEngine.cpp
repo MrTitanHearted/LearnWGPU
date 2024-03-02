@@ -2,7 +2,6 @@
 
 #include <WRenderBuffer.hpp>
 #include <WPipeline.hpp>
-#include <WBaseVertex.hpp>
 #include <WBindings.hpp>
 #include <WSampler.hpp>
 #include <WTexture.hpp>
@@ -12,12 +11,6 @@
 #include <sstream>
 
 #include <glm/gtc/matrix_transform.hpp>
-
-struct Vertex : WBaseVertex {
-    glm::vec3 position;
-    glm::vec3 normal;
-    glm::vec2 uv;
-};
 
 WEngine *WEngine::engine = nullptr;
 
@@ -44,61 +37,18 @@ WEngine &WEngine::GetInstance() {
 }
 
 void WEngine::run() {
-    Vertex::addVertexAttribute(WGPUVertexFormat_Float32x3, offsetof(Vertex, position), 0);
-    Vertex::addVertexAttribute(WGPUVertexFormat_Float32x3, offsetof(Vertex, normal), 1);
-    Vertex::addVertexAttribute(WGPUVertexFormat_Float32x2, offsetof(Vertex, uv), 2);
-    Vertex::setVertexStride(sizeof(Vertex));
 
     WGPUShaderModule shader = shaderFromFile(device, "assets/shaders/shader.wgsl");
-    std::vector<Vertex> vertices{
-        Vertex{.position = glm::vec3(-0.5, -0.5, 0.0), .uv = glm::vec2(0.0, 0.0)},
-        Vertex{.position = glm::vec3(-0.5, 0.5, 0.0), .uv = glm::vec2(0.0, 1.0)},
-        Vertex{.position = glm::vec3(0.5, 0.5, 0.0), .uv = glm::vec2(1.0, 1.0)},
-        Vertex{.position = glm::vec3(0.5, -0.5, 0.0), .uv = glm::vec2(1.0, 0.0)},
-    };
-    std::vector<uint32_t> indices{0, 1, 2, 0, 2, 3};
-    WRenderBuffer renderBuffer = WRenderBufferBuilder{}
-                                     .setVertices(vertices)
-                                     .setIndices(indices)
-                                     .build(device);
-
-    WUniformBuffer uniformBuffer{device, &model, sizeof(model)};
-
-    WGPUSampler sampler = WSamplerBuilder{}.build(device);
-    WGPUTexture texture1 = WTextureBuilder{}.fromFileAsRgba8(device, "assets/textures/wall.jpg");
-    WGPUTextureView texture1View = wgpuTextureCreateView(texture1, nullptr);
-    WGPUTexture texture2 = WTextureBuilder{}.fromFileAsRgba8(device, "assets/textures/awesomeface.png");
-    WGPUTextureView texture2View = wgpuTextureCreateView(texture2, nullptr);
-
-    WGPUBindGroupLayout bindGroupLayout =
-        WBindGroupLayoutBuilder{}
-            .addBindingUniform(0)
-            .addBindingSampler(1)
-            .addBindingTexture(2)
-            .addBindingTexture(3)
-            .build(device);
-    WGPUBindGroup bindGroup =
-        WBindGroupBuilder{}
-            .addBindingUniform(0, uniformBuffer.buffer, uniformBuffer.size)
-            .addBindingSampler(1, sampler)
-            .addBindingTexture(2, texture1View)
-            .addBindingTexture(3, texture2View)
-            .build(device, bindGroupLayout);
-
     WGPUPipelineLayout layout = WPipelineLayoutBuilder{}
-                                    .addBindGroupLayout(bindGroupLayout)
                                     .build(device);
     WGPURenderPipeline pipeline = WRenderPipelineBuilder{}
                                       .setVertexState(shader, "vs_main")
                                       .setFragmentState(shader, "fs_main")
                                       .addColorTarget(config.format)
-                                      .addVertexBufferLayout(Vertex::desc())
                                       .build(device, layout);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-
-        model = glm::rotate(model, glm::radians(0.01f), glm::vec3(0.0, 0.0, 1.0));
 
         WGPUSurfaceTexture surfaceTexture;
         wgpuSurfaceGetCurrentTexture(surface, &surfaceTexture);
@@ -142,12 +92,8 @@ void WEngine::run() {
         };
         WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
 
-        uniformBuffer.update(queue, &model);
-
         wgpuRenderPassEncoderSetPipeline(renderPassEncoder, pipeline);
-        wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, bindGroup, 0, nullptr);
-
-        renderBuffer.render(renderPassEncoder);
+        wgpuRenderPassEncoderDraw(renderPassEncoder, 3, 1, 0, 0);
 
         wgpuRenderPassEncoderEnd(renderPassEncoder);
 
@@ -160,15 +106,6 @@ void WEngine::run() {
         wgpuTextureViewRelease(frame);
         wgpuTextureRelease(surfaceTexture.texture);
     }
-
-    wgpuBufferRelease(renderBuffer.vertex);
-    wgpuBufferRelease(renderBuffer.index);
-    wgpuBufferRelease(uniformBuffer.buffer);
-    wgpuSamplerRelease(sampler);
-    wgpuTextureViewRelease(texture1View);
-    wgpuTextureRelease(texture1);
-    wgpuTextureViewRelease(texture2View);
-    wgpuTextureRelease(texture2);
 }
 
 WEngine::WEngine() {
@@ -210,15 +147,24 @@ WEngine::WEngine() {
     wgpuSurfaceGetCapabilities(surface, adapter, &caps);
     config = WGPUSurfaceConfiguration{
         .device = device,
-        .format = caps.formats[1],
+        .format = WGPUTextureFormat_RGBA8UnormSrgb,
         .usage = WGPUTextureUsage_RenderAttachment,
         .viewFormatCount = 0,
         .viewFormats = nullptr,
         .alphaMode = caps.alphaModes[0],
         .width = width,
         .height = height,
-        .presentMode = WGPUPresentMode_Mailbox,
+        .presentMode = WGPUPresentMode_Fifo,
     };
+#ifdef WENGINE_PLATFORM_WINDOWS
+    config.format = WGPUTextureFormat_RGBA8Unorm;
+#endif
+    for (int i = 0; i < caps.presentModeCount; i++) {
+        if (WGPUPresentMode_Mailbox == caps.presentModes[i]) {
+            config.presentMode = WGPUPresentMode_Mailbox;
+            break;
+        }
+    }
     wgpuSurfaceConfigure(surface, &config);
     wgpuSurfaceCapabilitiesFreeMembers(caps);
 }
