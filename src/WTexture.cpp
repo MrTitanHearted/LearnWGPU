@@ -58,7 +58,6 @@ WGPUTexture WTextureBuilder::build(WGPUDevice device, WGPUExtent3D size, const u
         stride * size.width * size.height * size.depthOrArrayLayers,
         &dataLayout,
         &size);
-    wgpuQueueRelease(queue);
 
     return texture;
 }

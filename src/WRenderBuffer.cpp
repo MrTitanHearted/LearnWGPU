@@ -51,14 +51,11 @@ WGPUBuffer wgpuDeviceCreateBufferInit(WGPUDevice device, WGPUBufferDescriptor de
         return wgpuDeviceCreateBuffer(device, &desc);
     }
 
-    desc.mappedAtCreation = true;
+    desc.usage |= WGPUBufferUsage_CopyDst;
 
+    WGPUQueue queue = wgpuDeviceGetQueue(device);
     WGPUBuffer buffer = wgpuDeviceCreateBuffer(device, &desc);
-
-    void* mapped = wgpuBufferGetMappedRange(buffer, 0, desc.size);
-    memcpy(mapped, data, desc.size);
-    wgpuBufferUnmap(buffer);
-
+    wgpuQueueWriteBuffer(queue, buffer, 0, data, desc.size);
     return buffer;
 }
 
@@ -67,9 +64,10 @@ WUniformBuffer::WUniformBuffer(WGPUDevice device, void* data, size_t size) {
     WGPUBufferDescriptor desc{
         .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
         .size = size,
-        .mappedAtCreation = true,
     };
-    buffer = wgpuDeviceCreateBufferInit(device, desc, data);
+    buffer = wgpuDeviceCreateBuffer(device, &desc);
+    WGPUQueue queue = wgpuDeviceGetQueue(device);
+    update(queue, data);
 }
 
 void WUniformBuffer::update(WGPUQueue queue, void* data) {

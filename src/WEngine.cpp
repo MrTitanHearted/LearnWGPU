@@ -1,6 +1,7 @@
 #include <WEngine.hpp>
 
 #include <WRenderBuffer.hpp>
+#include <WRenderPass.hpp>
 #include <WPipeline.hpp>
 #include <WBindings.hpp>
 #include <WSampler.hpp>
@@ -11,6 +12,13 @@
 #include <sstream>
 
 #include <glm/gtc/matrix_transform.hpp>
+
+struct WVertex {
+    glm::vec3 pos;
+    glm::vec3 color;
+
+    static WVertexLayout desc();
+};
 
 WEngine *WEngine::engine = nullptr;
 
@@ -37,15 +45,95 @@ WEngine &WEngine::GetInstance() {
 }
 
 void WEngine::run() {
+    // WVertex vertices[]{
+    //     WVertex{.pos = glm::vec3(-0.5, -0.5, 0.0), .color = glm::vec3(1.0, 0.0, 0.0)},
+    //     WVertex{.pos = glm::vec3(0.0, 0.5, 0.0), .color = glm::vec3(0.0, 1.0, 0.0)},
+    //     WVertex{.pos = glm::vec3(0.5, -0.5, 0.0), .color = glm::vec3(0.0, 0.0, 1.0)},
+    // };
+    // uint32_t indices[]{0, 1, 2};
+    // WGPUBuffer vertexBuffer;
+    // WGPUBuffer indexBuffer;
+    // size_t verticesSize = sizeof(vertices);
+    // size_t indicesSize = sizeof(indices);
+    // uint32_t verticesCount = verticesSize / sizeof(WVertex);
+    // uint32_t indicesCount = indicesSize / sizeof(uint32_t);
+    // {
+    //     WGPUBufferDescriptor vertexDesc{
+    //         .usage = WGPUBufferUsage_Vertex | WGPUBufferUsage_CopyDst,
+    //         .size = verticesSize,
+    //     };
+    //     WGPUBufferDescriptor indexDesc{
+    //         .usage = WGPUBufferUsage_Index | WGPUBufferUsage_CopyDst,
+    //         .size = indicesSize,
+    //     };
+    //     vertexBuffer = wgpuDeviceCreateBuffer(device, &vertexDesc);
+    //     indexBuffer = wgpuDeviceCreateBuffer(device, &indexDesc);
 
+    //     WGPUQueue oqueue = wgpuDeviceGetQueue(device);
+    //     wgpuQueueWriteBuffer(oqueue, vertexBuffer, 0, vertices, verticesSize);
+    //     wgpuQueueWriteBuffer(oqueue, indexBuffer, 0, indices, indicesSize);
+    // }
+    // WGPUVertexAttribute attributes[]{
+    //     WGPUVertexAttribute{.format = WGPUVertexFormat_Float32x3, .offset = offsetof(WVertex, pos), .shaderLocation = 0},
+    //     WGPUVertexAttribute{.format = WGPUVertexFormat_Float32x3, .offset = offsetof(WVertex, color), .shaderLocation = 1},
+    // };
+    // WGPUVertexBufferLayout vertexBufferLayout{
+    //     .arrayStride = sizeof(WVertex),
+    //     .stepMode = WGPUVertexStepMode_Vertex,
+    //     .attributeCount = 2,
+    //     .attributes = attributes,
+    // };
+    // WGPUShaderModule shader = shaderFromFile(device, "assets/shaders/shader.wgsl");
+    // WGPUPipelineLayoutDescriptor layoutDesc{};
+    // WGPUPipelineLayout pipelineLayout = wgpuDeviceCreatePipelineLayout(device, &layoutDesc);
+    // WGPUColorTargetState colorTarget{
+    //     .format = config.format,
+    //     .writeMask = WGPUColorWriteMask_All,
+    // };
+    // WGPUFragmentState fragmentState{
+    //     .module = shader,
+    //     .entryPoint = "fs_main",
+    //     .targetCount = 1,
+    //     .targets = &colorTarget,
+    // };
+    // WGPURenderPipelineDescriptor pipelineDesc{
+    //     .layout = pipelineLayout,
+    //     .vertex = WGPUVertexState{
+    //         .module = shader,
+    //         .entryPoint = "vs_main",
+    //         .bufferCount = 1,
+    //         .buffers = &vertexBufferLayout,
+    //     },
+    //     .primitive = WGPUPrimitiveState{.topology = WGPUPrimitiveTopology_TriangleList},
+    //     .multisample = WGPUMultisampleState{
+    //         .count = 1,
+    //         .mask = 0xFFFFFFFF,
+    //     },
+    //     .fragment = &fragmentState,
+    // };
+    // WGPURenderPipeline pipeline = wgpuDeviceCreateRenderPipeline(device, &pipelineDesc);
     WGPUShaderModule shader = shaderFromFile(device, "assets/shaders/shader.wgsl");
-    WGPUPipelineLayout layout = WPipelineLayoutBuilder{}
-                                    .build(device);
+    std::vector<WVertex> vertices{
+        WVertex{.pos = glm::vec3(-0.5, -0.5, 0.0), .color = glm::vec3(1.0, 0.0, 0.0)},
+        WVertex{.pos = glm::vec3(0.0, 0.5, 0.0), .color = glm::vec3(0.0, 1.0, 0.0)},
+        WVertex{.pos = glm::vec3(0.5, -0.5, 0.0), .color = glm::vec3(0.0, 0.0, 1.0)},
+    };
+    std::vector<uint32_t> indices{0, 1, 2};
+    WRenderBuffer renderBuffer = WRenderBufferBuilder{}
+                                     .setVertices(vertices)
+                                     .setIndices(indices)
+                                     .build(device);
+
+    WGPUPipelineLayout pipelineLayout = WPipelineLayoutBuilder{}.build(device);
     WGPURenderPipeline pipeline = WRenderPipelineBuilder{}
                                       .setVertexState(shader, "vs_main")
                                       .setFragmentState(shader, "fs_main")
+                                      .addVertexBufferLayout(WVertexLayout{sizeof(WVertex)}
+                                                                 .setStepMode(WGPUVertexStepMode_Vertex)
+                                                                 .addAttributes(WGPUVertexFormat_Float32x3, offsetof(WVertex, pos), 0)
+                                                                 .addAttributes(WGPUVertexFormat_Float32x3, offsetof(WVertex, color), 1))
                                       .addColorTarget(config.format)
-                                      .build(device, layout);
+                                      .build(device, pipelineLayout);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -79,32 +167,21 @@ void WEngine::run() {
         WGPUTextureView frame = wgpuTextureCreateView(surfaceTexture.texture, nullptr);
         WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
 
-        WGPURenderPassColorAttachment colorAttachment{
-            .view = frame,
-            .loadOp = WGPULoadOp_Clear,
-            .storeOp = WGPUStoreOp_Store,
-            .clearValue = WGPUColor{0.2, 0.3, 0.3, 1.0},
-        };
-        WGPURenderPassDescriptor renderPassDesc{
-            .label = "LearnWGPU main render pass",
-            .colorAttachmentCount = 1,
-            .colorAttachments = &colorAttachment,
-        };
-        WGPURenderPassEncoder renderPassEncoder = wgpuCommandEncoderBeginRenderPass(commandEncoder, &renderPassDesc);
+        WGPURenderPassEncoder renderPassEncoder = WRenderPassBuilder{}
+                                                      .addColorAttachment(frame, WGPUColor{0.2, 0.3, 0.3, 1.0})
+                                                      .build(commandEncoder);
 
         wgpuRenderPassEncoderSetPipeline(renderPassEncoder, pipeline);
-        wgpuRenderPassEncoderDraw(renderPassEncoder, 3, 1, 0, 0);
+        // wgpuRenderPassEncoderSetVertexBuffer(renderPassEncoder, 0, vertexBuffer, 0, verticesSize);
+        // wgpuRenderPassEncoderSetIndexBuffer(renderPassEncoder, indexBuffer, WGPUIndexFormat_Uint32, 0, indicesSize);
+        // wgpuRenderPassEncoderDrawIndexed(renderPassEncoder, indicesCount, 1, 0, 0, 0);
 
+        renderBuffer.render(renderPassEncoder);
         wgpuRenderPassEncoderEnd(renderPassEncoder);
 
         WGPUCommandBuffer commandBuffer = wgpuCommandEncoderFinish(commandEncoder, nullptr);
         wgpuQueueSubmit(queue, 1, &commandBuffer);
         wgpuSurfacePresent(surface);
-
-        wgpuCommandBufferRelease(commandBuffer);
-        wgpuCommandEncoderRelease(commandEncoder);
-        wgpuTextureViewRelease(frame);
-        wgpuTextureRelease(surfaceTexture.texture);
     }
 }
 
@@ -227,4 +304,10 @@ WGPUShaderModule WEngine::shaderFromFile(WGPUDevice device, const char *path) {
     };
     WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderDesc);
     return shader;
+}
+
+WVertexLayout WVertex::desc() {
+    return WVertexLayout{sizeof(WVertex)}
+        .addAttributes(WGPUVertexFormat_Float32x3, offsetof(WVertex, pos), 0)
+        .addAttributes(WGPUVertexFormat_Float32x3, offsetof(WVertex, color), 1);
 }

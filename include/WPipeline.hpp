@@ -1,15 +1,7 @@
 #pragma once
 
 #include <WInclude.hpp>
-
-// struct WPipelineLayout {
-//     // std::vecotr<WGPUBindGroupLayout> bindgroupLayouts;
-//     // std::map<uint32_t, std::vector<WGPUBindGroupLayoutEntry>> bindgroups;
-//     WGPUPipelineLayout pipelineLayout;
-// };
-// struct WRenderPipeline {
-//     WGPURenderPipeline renderPipeline;
-// };
+#include <WVertexLayout.hpp>
 
 struct WPipelineLayoutBuilder {
     std::vector<WGPUBindGroupLayout> bindGroupLayouts;
@@ -22,12 +14,12 @@ struct WPipelineLayoutBuilder {
 
 struct WRenderPipelineBuilder {
     WGPURenderPipelineDescriptor pipelineDesc;
-    std::vector<WGPUVertexBufferLayout> vertexBufferLayouts;
+    std::vector<WVertexLayout> vertexLayouts;
     std::vector<WGPUColorTargetState> colorTargetStates;
     WGPUFragmentState fragmentState;
 
     WRenderPipelineBuilder& addColorTarget(WGPUTextureFormat format);
-    WRenderPipelineBuilder& addVertexBufferLayout(WGPUVertexBufferLayout layout);
+    WRenderPipelineBuilder& addVertexBufferLayout(WVertexLayout layout);
     WRenderPipelineBuilder& setFragmentState(WGPUShaderModule shader, const char* entry);
     WRenderPipelineBuilder& setVertexState(WGPUShaderModule shader, const char* entry);
 

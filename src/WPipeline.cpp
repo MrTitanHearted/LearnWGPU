@@ -20,8 +20,8 @@ WRenderPipelineBuilder& WRenderPipelineBuilder::addColorTarget(WGPUTextureFormat
     return *this;
 }
 
-WRenderPipelineBuilder& WRenderPipelineBuilder::addVertexBufferLayout(WGPUVertexBufferLayout layout) {
-    vertexBufferLayouts.push_back(layout);
+WRenderPipelineBuilder& WRenderPipelineBuilder::addVertexBufferLayout(WVertexLayout layout) {
+    vertexLayouts.push_back(layout);
     return *this;
 }
 
@@ -38,6 +38,17 @@ WRenderPipelineBuilder& WRenderPipelineBuilder::setVertexState(WGPUShaderModule 
 }
 
 WGPURenderPipeline WRenderPipelineBuilder::build(WGPUDevice device, WGPUPipelineLayout layout) {
+    std::vector<WGPUVertexBufferLayout> vertexBufferLayouts{};
+    vertexBufferLayouts.reserve(vertexLayouts.size());
+    for (const WVertexLayout& vertexLayout : vertexLayouts) {
+        vertexBufferLayouts.push_back(WGPUVertexBufferLayout{
+            .arrayStride = vertexLayout.arrayStride,
+            .stepMode = vertexLayout.stepMode,
+            .attributeCount = vertexLayout.attributes.size(),
+            .attributes = vertexLayout.attributes.data(),
+        });
+    }
+
     pipelineDesc.layout = layout;
 
     fragmentState.targetCount = colorTargetStates.size();
