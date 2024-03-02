@@ -1,7 +1,7 @@
 #include <WRenderBuffer.hpp>
 #include <string.h>
 
-WRenderBuffer::WRenderBuffer(WGPUDevice device, void* vertices, size_t verticesCount, size_t verticesSize, uint32_t* indices, size_t indicesCount) {
+WRenderBuffer::WRenderBuffer(WGPUDevice device, const void* vertices, size_t verticesCount, size_t verticesSize, const uint32_t* indices, size_t indicesCount) {
     this->verticesCount = verticesCount;
     this->verticesSize = verticesSize;
     this->indicesCount = indicesCount;
@@ -29,7 +29,7 @@ void WRenderBuffer::render(WGPURenderPassEncoder encoder) {
     wgpuRenderPassEncoderDrawIndexed(encoder, indicesCount, 1, 0, 0, 0);
 }
 
-WRenderBufferBuilder& WRenderBufferBuilder::setIndices(std::vector<uint32_t> indices) {
+WRenderBufferBuilder& WRenderBufferBuilder::setIndices(const std::vector<uint32_t>& indices) {
     this->indicesCount = indices.size();
     this->indices = indices.data();
     return *this;
@@ -46,7 +46,7 @@ WRenderBuffer WRenderBufferBuilder::build(WGPUDevice device) {
     };
 }
 
-WGPUBuffer wgpuDeviceCreateBufferInit(WGPUDevice device, WGPUBufferDescriptor desc, void* data) {
+WGPUBuffer wgpuDeviceCreateBufferInit(WGPUDevice device, WGPUBufferDescriptor desc, const void* data) {
     if (desc.size == 0 || data == nullptr) {
         return wgpuDeviceCreateBuffer(device, &desc);
     }
@@ -59,7 +59,7 @@ WGPUBuffer wgpuDeviceCreateBufferInit(WGPUDevice device, WGPUBufferDescriptor de
     return buffer;
 }
 
-WUniformBuffer::WUniformBuffer(WGPUDevice device, void* data, size_t size) {
+WUniformBuffer::WUniformBuffer(WGPUDevice device, const void* data, size_t size) {
     this->size = size;
     WGPUBufferDescriptor desc{
         .usage = WGPUBufferUsage_Uniform | WGPUBufferUsage_CopyDst,
@@ -70,6 +70,6 @@ WUniformBuffer::WUniformBuffer(WGPUDevice device, void* data, size_t size) {
     update(queue, data);
 }
 
-void WUniformBuffer::update(WGPUQueue queue, void* data) {
+void WUniformBuffer::update(WGPUQueue queue, const void* data) {
     wgpuQueueWriteBuffer(queue, buffer, 0, data, size);
 }

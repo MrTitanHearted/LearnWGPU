@@ -2,7 +2,7 @@
 
 #include <WInclude.hpp>
 
-WGPUBuffer wgpuDeviceCreateBufferInit(WGPUDevice device, WGPUBufferDescriptor desc, void *data);
+WGPUBuffer wgpuDeviceCreateBufferInit(WGPUDevice device, WGPUBufferDescriptor desc, const void *data);
 
 struct WRenderBuffer {
     WGPUBuffer vertex;
@@ -13,26 +13,26 @@ struct WRenderBuffer {
     size_t indicesCount;
 
     WRenderBuffer() {}
-    WRenderBuffer(WGPUDevice device, void *vertices, size_t verticesCount, size_t verticesSize, uint32_t *indices, size_t indicesCount);
+    WRenderBuffer(WGPUDevice device, const void *vertices, size_t verticesCount, size_t verticesSize, const uint32_t *indices, size_t indicesCount);
 
     void render(WGPURenderPassEncoder encoder);
 };
 
 struct WRenderBufferBuilder {
-    void *vertices;
-    uint32_t *indices;
+    const void *vertices;
+    const uint32_t *indices;
     size_t verticesSize;
     size_t verticesCount;
     size_t indicesCount;
 
     template <class Vertex>
-    WRenderBufferBuilder &setVertices(std::vector<Vertex> vertices) {
+    WRenderBufferBuilder &setVertices(const std::vector<Vertex> &vertices) {
         this->verticesCount = vertices.size();
         this->verticesSize = sizeof(Vertex) * this->verticesCount;
         this->vertices = vertices.data();
         return *this;
     }
-    WRenderBufferBuilder &setIndices(std::vector<uint32_t> indices);
+    WRenderBufferBuilder &setIndices(const std::vector<uint32_t> &indices);
 
     WRenderBuffer build(WGPUDevice device);
 };
@@ -42,7 +42,7 @@ struct WUniformBuffer {
     size_t size;
 
     WUniformBuffer() {}
-    WUniformBuffer(WGPUDevice device, void *data, size_t size);
+    WUniformBuffer(WGPUDevice device, const void *data, size_t size);
 
-    void update(WGPUQueue queue, void *data);
+    void update(WGPUQueue queue, const void *data);
 };

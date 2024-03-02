@@ -19,5 +19,5 @@ struct WTextureBuilder {
     WTextureBuilder& setSampleCount(uint32_t count);
 
     WGPUTexture build(WGPUDevice device, WGPUExtent3D size, const unsigned char* data, size_t stride);
-    WGPUTexture fromFileAsRgba8(WGPUDevice device, std::string path);
+    static WGPUTexture fromFileAsRgba8(WGPUDevice device, std::string path);
 };

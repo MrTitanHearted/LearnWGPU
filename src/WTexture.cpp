@@ -77,9 +77,11 @@ WGPUTexture WTextureBuilder::fromFileAsRgba8(WGPUDevice device, std::string path
         .depthOrArrayLayers = 1,
     };
 
-    desc.format = WGPUTextureFormat_RGBA8Unorm;
+    WTextureBuilder builder{};
 
-    WGPUTexture texture = build(device, size, data, 4);
+    builder.desc.format = WGPUTextureFormat_RGBA8Unorm;
+
+    WGPUTexture texture = builder.build(device, size, data, 4);
     stbi_image_free(data);
     stbi_set_flip_vertically_on_load(0);
 
