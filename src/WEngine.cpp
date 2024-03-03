@@ -57,16 +57,20 @@ void WEngine::run() {
                                      .setVertices(vertices)
                                      .setIndices(indices)
                                      .build(device);
+
+    WUniformBuffer modelBuffer{device, &model, sizeof(model)};
     WGPUSampler sampler = WSamplerBuilder{}.build(device);
     WGPUTexture texture = WTextureBuilder::fromFileAsRgba8(device, "assets/textures/awesomeface.png");
     WGPUTextureView textureView = wgpuTextureCreateView(texture, nullptr);
     WGPUBindGroupLayout bindGroupLayout = WBindGroupLayoutBuilder{}
                                               .addBindingSampler(0)
                                               .addBindingTexture(1)
+                                              .addBindingUniform(2)
                                               .build(device);
     WGPUBindGroup bindGroup = WBindGroupBuilder{}
                                   .addBindingSampler(0, sampler)
                                   .addBindingTexture(1, textureView)
+                                  .addBindingUniform(2, modelBuffer.buffer, modelBuffer.size)
                                   .build(device, bindGroupLayout);
     WGPUPipelineLayout pipelineLayout = WPipelineLayoutBuilder{}
                                             .addBindGroupLayout(bindGroupLayout)
@@ -80,6 +84,13 @@ void WEngine::run() {
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+            model = glm::scale(model, glm::vec3(1.2));
+        }
+        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+            model = glm::scale(model, glm::vec3(0.8));
+        }
 
         WGPUSurfaceTexture surfaceTexture;
         wgpuSurfaceGetCurrentTexture(surface, &surfaceTexture);
@@ -118,6 +129,8 @@ void WEngine::run() {
         wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, bindGroup, 0, nullptr);
         renderBuffer.render(renderPassEncoder);
         wgpuRenderPassEncoderEnd(renderPassEncoder);
+
+        modelBuffer.update(queue, &model);
 
         WGPUCommandBuffer commandBuffer = wgpuCommandEncoderFinish(commandEncoder, nullptr);
         wgpuQueueSubmit(queue, 1, &commandBuffer);
@@ -198,8 +211,7 @@ WEngine::~WEngine() {
 }
 
 void WEngine::handleGlfwKey(GLFWwindow *window, int key, int scancode, int action, int mods) {
-    WEngine &engine = *(WEngine *)glfwGetWindowUserPointer(window);
-
+    // WEngine &engine = *(WEngine *)glfwGetWindowUserPointer(window);
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }

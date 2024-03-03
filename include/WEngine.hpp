@@ -29,6 +29,8 @@ class WEngine {
     WGPUQueue queue;
     WGPUSurfaceConfiguration config;
 
+    glm::mat4 model{1.0};
+
     WEngine();
     ~WEngine();
 
