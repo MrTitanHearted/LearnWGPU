@@ -37,6 +37,15 @@ WRenderPipelineBuilder& WRenderPipelineBuilder::setVertexState(WGPUShaderModule 
     return *this;
 }
 
+WRenderPipelineBuilder& WRenderPipelineBuilder::setDepthState(WGPUCompareFunction depthCompare, WGPUTextureFormat format, bool depthWriteEnabled) {
+    depthStencilState.format = format;
+    depthStencilState.depthCompare = depthCompare;
+    depthStencilState.depthWriteEnabled = depthWriteEnabled;
+    depthTest = true;
+
+    return *this;
+}
+
 WGPURenderPipeline WRenderPipelineBuilder::build(WGPUDevice device, WGPUPipelineLayout layout) {
     std::vector<WGPUVertexBufferLayout> vertexBufferLayouts{};
     vertexBufferLayouts.reserve(vertexLayouts.size());
@@ -63,6 +72,25 @@ WGPURenderPipeline WRenderPipelineBuilder::build(WGPUDevice device, WGPUPipeline
         .count = 1,
         .mask = 0xFFFFFFFF,
     };
+
+    if (!stencilTest) {
+        depthStencilState.stencilBack = WGPUStencilFaceState{
+            .compare = WGPUCompareFunction_Always,
+            .failOp = WGPUStencilOperation_Keep,
+            .depthFailOp = WGPUStencilOperation_Keep,
+            .passOp = WGPUStencilOperation_Keep,
+        };
+        depthStencilState.stencilFront = WGPUStencilFaceState{
+            .compare = WGPUCompareFunction_Always,
+            .failOp = WGPUStencilOperation_Keep,
+            .depthFailOp = WGPUStencilOperation_Keep,
+            .passOp = WGPUStencilOperation_Keep,
+        };
+    }
+
+    if (depthTest) {
+        pipelineDesc.depthStencil = &depthStencilState;
+    }
 
     return wgpuDeviceCreateRenderPipeline(device, &pipelineDesc);
 }

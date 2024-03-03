@@ -36,13 +36,3 @@ struct WRenderBufferBuilder {
 
     WRenderBuffer build(WGPUDevice device);
 };
-
-struct WUniformBuffer {
-    WGPUBuffer buffer;
-    size_t size;
-
-    WUniformBuffer() {}
-    WUniformBuffer(WGPUDevice device, const void *data, size_t size);
-
-    void update(WGPUQueue queue, const void *data);
-};

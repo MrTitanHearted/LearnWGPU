@@ -1,6 +1,7 @@
 #pragma once
 
 #include <WInclude.hpp>
+#include <WUniformBuffer.hpp>
 
 struct WBindGroupLayoutBuilder {
     std::vector<WGPUBindGroupLayoutEntry> entries;
@@ -18,6 +19,7 @@ struct WBindGroupBuilder {
     WGPUBindGroupDescriptor desc;
 
     WBindGroupBuilder& addBindingUniform(uint32_t binding, WGPUBuffer buffer, size_t size);
+    WBindGroupBuilder& addBindingUniform(uint32_t binding, WUniformBuffer buffer);
     WBindGroupBuilder& addBindingTexture(uint32_t binding, WGPUTextureView view);
     WBindGroupBuilder& addBindingSampler(uint32_t binding, WGPUSampler sampler);
 

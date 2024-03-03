@@ -1,6 +1,7 @@
 #pragma once
 
 #include <WInclude.hpp>
+#include <WTexture.hpp>
 
 class WEngine {
    public:
@@ -29,10 +30,12 @@ class WEngine {
     WGPUQueue queue;
     WGPUSurfaceConfiguration config;
 
-    glm::mat4 model{1.0};
+    WTexture depthTexture;
 
     WEngine();
     ~WEngine();
+
+    void presentFrame(std::function<void(WGPUTextureView)> frame);
 
     static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action, int mods);
     static void resizeGlfwFramebuffer(GLFWwindow *window, int width, int height);

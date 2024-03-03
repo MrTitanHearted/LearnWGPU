@@ -57,6 +57,10 @@ WBindGroupBuilder& WBindGroupBuilder::addBindingUniform(uint32_t binding, WGPUBu
     return *this;
 }
 
+WBindGroupBuilder& WBindGroupBuilder::addBindingUniform(uint32_t binding, WUniformBuffer buffer) {
+    return addBindingUniform(binding, buffer.buffer, buffer.size);
+}
+
 WBindGroupBuilder& WBindGroupBuilder::addBindingTexture(uint32_t binding, WGPUTextureView view) {
     entries.push_back(WGPUBindGroupEntry{
         .binding = binding,

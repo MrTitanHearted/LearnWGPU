@@ -18,8 +18,18 @@ struct WVertex {
     glm::vec3 color;
     glm::vec2 uv;
 
+    static WVertex New(float x, float y, float z, float r, float g, float b, float u, float v) {
+        return WVertex{.pos = glm::vec3(x, y, z), .color = glm::vec3(r, g, b), .uv = glm::vec2(u, v)};
+    }
     static WVertexLayout desc();
 };
+
+WVertexLayout WVertex::desc() {
+    return WVertexLayout{sizeof(WVertex)}
+        .addAttributes(WGPUVertexFormat_Float32x3, offsetof(WVertex, pos), 0)
+        .addAttributes(WGPUVertexFormat_Float32x3, offsetof(WVertex, color), 1)
+        .addAttributes(WGPUVertexFormat_Float32x2, offsetof(WVertex, uv), 2);
+}
 
 WEngine *WEngine::engine = nullptr;
 
@@ -47,31 +57,55 @@ WEngine &WEngine::GetInstance() {
 
 void WEngine::run() {
     WGPUShaderModule shader = shaderFromFile(device, "assets/shaders/shader.wgsl");
-    std::vector<WVertex> vertices{
-        WVertex{.pos = glm::vec3(-0.5, -0.5, 0.0), .color = glm::vec3(1.0, 0.0, 0.0), .uv = glm::vec2(0.0, 0.0)},
-        WVertex{.pos = glm::vec3(0.0, 0.5, 0.0), .color = glm::vec3(0.0, 1.0, 0.0), .uv = glm::vec2(0.5, 1.0)},
-        WVertex{.pos = glm::vec3(0.5, -0.5, 0.0), .color = glm::vec3(0.0, 0.0, 1.0), .uv = glm::vec2(1.0, 0.0)},
+    std::vector<WVertex> triangleVertices{
+        WVertex::New(-0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0),
+        WVertex::New(0.0, 0.5, 0.5, 0.0, 1.0, 0.0, 0.5, 1.0),
+        WVertex::New(0.5, -0.5, 0.5, 0.0, 0.0, 1.0, 1.0, 0.0),
     };
-    std::vector<uint32_t> indices{0, 1, 2};
-    WRenderBuffer renderBuffer = WRenderBufferBuilder{}
-                                     .setVertices(vertices)
-                                     .setIndices(indices)
-                                     .build(device);
+    std::vector<uint32_t> triangleIndices{0, 1, 2};
+    std::vector<WVertex> quadVertices{
+        WVertex::New(-0.5, -0.5, 0.8, 1.0, 0.0, 0.0, 0.0, 0.0),
+        WVertex::New(-0.5, 0.5, 0.8, 0.0, 1.0, 0.0, 0.0, 1.0),
+        WVertex::New(0.5, 0.5, 0.8, 0.0, 0.0, 1.0, 1.0, 1.0),
+        WVertex::New(0.5, -0.5, 0.8, 1.0, 1.0, 0.0, 1.0, 0.0),
+    };
+    std::vector<uint32_t> quadIndices{0, 1, 2, 0, 2, 3};
+    WRenderBuffer triangle = WRenderBufferBuilder{}
+                                 .setVertices(triangleVertices)
+                                 .setIndices(triangleIndices)
+                                 .build(device);
+    WRenderBuffer quad = WRenderBufferBuilder{}
+                             .setVertices(quadVertices)
+                             .setIndices(quadIndices)
+                             .build(device);
 
-    WUniformBuffer modelBuffer{device, &model, sizeof(model)};
+    glm::mat4 firstOne{1.0f};
+    glm::mat4 secondOne{1.0};
+
+    firstOne = glm::scale(firstOne, glm::vec3(1.0 / 2.0));
+    firstOne = glm::translate(firstOne, glm::vec3(0.3, 0.2, 0.0));
+    secondOne = glm::scale(secondOne, glm::vec3(1.0 / 3.0));
+    secondOne = glm::translate(secondOne, glm::vec3(-0.3, -0.2, 1.0));
+    WUniformBuffer triangleUniform{device, &firstOne, sizeof(firstOne)};
+    WUniformBuffer quadUniform{device, &secondOne, sizeof(secondOne)};
+
     WGPUSampler sampler = WSamplerBuilder{}.build(device);
-    WGPUTexture texture = WTextureBuilder::fromFileAsRgba8(device, "assets/textures/awesomeface.png");
-    WGPUTextureView textureView = wgpuTextureCreateView(texture, nullptr);
+    WTexture texture = WTextureBuilder::fromFileAsRgba8(device, "assets/textures/container.jpg");
     WGPUBindGroupLayout bindGroupLayout = WBindGroupLayoutBuilder{}
                                               .addBindingSampler(0)
                                               .addBindingTexture(1)
                                               .addBindingUniform(2)
                                               .build(device);
-    WGPUBindGroup bindGroup = WBindGroupBuilder{}
-                                  .addBindingSampler(0, sampler)
-                                  .addBindingTexture(1, textureView)
-                                  .addBindingUniform(2, modelBuffer.buffer, modelBuffer.size)
-                                  .build(device, bindGroupLayout);
+    WGPUBindGroup triangleBindGroup = WBindGroupBuilder{}
+                                          .addBindingSampler(0, sampler)
+                                          .addBindingTexture(1, texture)
+                                          .addBindingUniform(2, triangleUniform)
+                                          .build(device, bindGroupLayout);
+    WGPUBindGroup quadBindGroup = WBindGroupBuilder{}
+                                      .addBindingSampler(0, sampler)
+                                      .addBindingTexture(1, texture)
+                                      .addBindingUniform(2, triangleUniform)
+                                      .build(device, bindGroupLayout);
     WGPUPipelineLayout pipelineLayout = WPipelineLayoutBuilder{}
                                             .addBindGroupLayout(bindGroupLayout)
                                             .build(device);
@@ -80,61 +114,34 @@ void WEngine::run() {
                                       .setFragmentState(shader, "fs_main")
                                       .addVertexBufferLayout(WVertex::desc())
                                       .addColorTarget(config.format)
+                                      .setDepthState()
                                       .build(device, pipelineLayout);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-            model = glm::scale(model, glm::vec3(1.2));
-        }
-        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-            model = glm::scale(model, glm::vec3(0.8));
-        }
+        presentFrame([&](WGPUTextureView frame) {
+            WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
+            std::vector<WGPUCommandBuffer> commandBuffers{};
 
-        WGPUSurfaceTexture surfaceTexture;
-        wgpuSurfaceGetCurrentTexture(surface, &surfaceTexture);
-        switch (surfaceTexture.status) {
-            case WGPUSurfaceGetCurrentTextureStatus_Success:
-                break;
-            case WGPUSurfaceGetCurrentTextureStatus_Timeout:
-            case WGPUSurfaceGetCurrentTextureStatus_Outdated:
-            case WGPUSurfaceGetCurrentTextureStatus_Lost: {
-                if (surfaceTexture.texture != nullptr) {
-                    wgpuTextureRelease(surfaceTexture.texture);
-                }
-                int width, height;
-                glfwGetWindowSize(window, &width, &height);
-                if (width != 0 && height != 0) {
-                    config.width = width;
-                    config.height = height;
-                    wgpuSurfaceConfigure(surface, &config);
-                }
-                std::cout << "Resizing in the main function!" << std::endl;
-                continue;
-            }
-            case WGPUSurfaceGetCurrentTextureStatus_OutOfMemory:
-            case WGPUSurfaceGetCurrentTextureStatus_DeviceLost:
-            case WGPUSurfaceGetCurrentTextureStatus_Force32:
-                throw std::runtime_error(fmt::format("get_current_texture status={}", (uint32_t)surfaceTexture.status));
-        }
-        WGPUTextureView frame = wgpuTextureCreateView(surfaceTexture.texture, nullptr);
-        WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
+            WGPURenderPassEncoder renderPassEncoder = WRenderPassBuilder{}
+                                                          .addColorAttachment(frame, WGPUColor{0.2, 0.3, 0.3, 1.0})
+                                                          .setDepthAttachment(depthTexture)
+                                                          .build(commandEncoder);
+            wgpuRenderPassEncoderSetPipeline(renderPassEncoder, pipeline);
+            wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, triangleBindGroup, 0, nullptr);
+            triangleUniform.update(queue, &firstOne);
+            triangle.render(renderPassEncoder);
 
-        WGPURenderPassEncoder renderPassEncoder = WRenderPassBuilder{}
-                                                      .addColorAttachment(frame, WGPUColor{0.2, 0.3, 0.3, 1.0})
-                                                      .build(commandEncoder);
+            wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, quadBindGroup, 0, nullptr);
+            quadUniform.update(queue, &secondOne);
+            quad.render(renderPassEncoder);
 
-        wgpuRenderPassEncoderSetPipeline(renderPassEncoder, pipeline);
-        wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, bindGroup, 0, nullptr);
-        renderBuffer.render(renderPassEncoder);
-        wgpuRenderPassEncoderEnd(renderPassEncoder);
+            wgpuRenderPassEncoderEnd(renderPassEncoder);
+            commandBuffers.push_back(wgpuCommandEncoderFinish(commandEncoder, nullptr));
 
-        modelBuffer.update(queue, &model);
-
-        WGPUCommandBuffer commandBuffer = wgpuCommandEncoderFinish(commandEncoder, nullptr);
-        wgpuQueueSubmit(queue, 1, &commandBuffer);
-        wgpuSurfacePresent(surface);
+            wgpuQueueSubmit(queue, commandBuffers.size(), commandBuffers.data());
+        });
     }
 }
 
@@ -197,6 +204,8 @@ WEngine::WEngine() {
     }
     wgpuSurfaceConfigure(surface, &config);
     wgpuSurfaceCapabilitiesFreeMembers(caps);
+
+    depthTexture = WTexture::GetDepthTexture(device, WGPUExtent3D{width, height, 1});
 }
 
 WEngine::~WEngine() {
@@ -208,6 +217,47 @@ WEngine::~WEngine() {
 
     glfwDestroyWindow(window);
     window = nullptr;
+}
+
+void WEngine::presentFrame(std::function<void(WGPUTextureView)> frame) {
+    bool skip = false;
+    WGPUSurfaceTexture surfaceTexture;
+    wgpuSurfaceGetCurrentTexture(surface, &surfaceTexture);
+    switch (surfaceTexture.status) {
+        case WGPUSurfaceGetCurrentTextureStatus_Success:
+            break;
+        case WGPUSurfaceGetCurrentTextureStatus_Timeout:
+        case WGPUSurfaceGetCurrentTextureStatus_Outdated:
+        case WGPUSurfaceGetCurrentTextureStatus_Lost: {
+            if (surfaceTexture.texture != nullptr) {
+                wgpuTextureRelease(surfaceTexture.texture);
+            }
+            int width, height;
+            glfwGetWindowSize(window, &width, &height);
+            if (width != 0 && height != 0) {
+                config.width = width;
+                config.height = height;
+                wgpuSurfaceConfigure(surface, &config);
+
+                depthTexture = WTexture::GetDepthTexture(device, WGPUExtent3D{(uint32_t)width, (uint32_t)height, 1});
+            }
+            std::cout << "Resizing in the main function!" << std::endl;
+            skip = true;
+        }
+        case WGPUSurfaceGetCurrentTextureStatus_OutOfMemory:
+        case WGPUSurfaceGetCurrentTextureStatus_DeviceLost:
+        case WGPUSurfaceGetCurrentTextureStatus_Force32:
+            throw std::runtime_error(fmt::format("get_current_texture status={}", (uint32_t)surfaceTexture.status));
+    }
+
+    if (!skip) {
+        WGPUTextureView target = wgpuTextureCreateView(surfaceTexture.texture, nullptr);
+        frame(target);
+        wgpuSurfacePresent(surface);
+
+        wgpuTextureViewRelease(target);
+        wgpuTextureRelease(surfaceTexture.texture);
+    }
 }
 
 void WEngine::handleGlfwKey(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -230,6 +280,8 @@ void WEngine::resizeGlfwFramebuffer(GLFWwindow *window, int width, int height) {
     engine.config.height = engine.height;
 
     wgpuSurfaceConfigure(engine.surface, &engine.config);
+
+    engine.depthTexture = WTexture::GetDepthTexture(engine.device, WGPUExtent3D{(uint32_t)width, (uint32_t)height, 1});
 }
 
 WGPUShaderModule WEngine::shaderFromFile(WGPUDevice device, const char *path) {
@@ -256,11 +308,4 @@ WGPUShaderModule WEngine::shaderFromFile(WGPUDevice device, const char *path) {
     };
     WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderDesc);
     return shader;
-}
-
-WVertexLayout WVertex::desc() {
-    return WVertexLayout{sizeof(WVertex)}
-        .addAttributes(WGPUVertexFormat_Float32x3, offsetof(WVertex, pos), 0)
-        .addAttributes(WGPUVertexFormat_Float32x3, offsetof(WVertex, color), 1)
-        .addAttributes(WGPUVertexFormat_Float32x2, offsetof(WVertex, uv), 2);
 }

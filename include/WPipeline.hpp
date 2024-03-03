@@ -17,11 +17,17 @@ struct WRenderPipelineBuilder {
     std::vector<WVertexLayout> vertexLayouts;
     std::vector<WGPUColorTargetState> colorTargetStates;
     WGPUFragmentState fragmentState;
+    WGPUDepthStencilState depthStencilState;
+    bool depthTest = false;
+    bool stencilTest = false;
 
     WRenderPipelineBuilder& addColorTarget(WGPUTextureFormat format);
     WRenderPipelineBuilder& addVertexBufferLayout(WVertexLayout layout);
     WRenderPipelineBuilder& setFragmentState(WGPUShaderModule shader, const char* entry);
     WRenderPipelineBuilder& setVertexState(WGPUShaderModule shader, const char* entry);
+    WRenderPipelineBuilder& setDepthState(WGPUCompareFunction depthCompare = WGPUCompareFunction_Less,
+                                          WGPUTextureFormat format = WGPUTextureFormat_Depth32Float,
+                                          bool depthWriteEnabled = true);
 
     WGPURenderPipeline build(WGPUDevice device, WGPUPipelineLayout layout);
 };
