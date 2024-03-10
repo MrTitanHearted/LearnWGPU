@@ -87,11 +87,9 @@ void WEngine::run() {
     secondOne = glm::scale(secondOne, glm::vec3(1.0 / 3.0));
     secondOne = glm::translate(secondOne, glm::vec3(-0.3, -0.2, 1.0));
     uint32_t offsetAlignment = limits.minUniformBufferOffsetAlignment;
-    WUniformBuffer uniform{device, &firstOne, 2 * offsetAlignment};
-    uniform.update(queue, &firstOne, 0, sizeof(firstOne));
-    uniform.update(queue, &secondOne, offsetAlignment, sizeof(secondOne));
-
-    fmt::println("maxDynamicUniformBuffersPerPipelineLayout: {}", limits.maxDynamicUniformBuffersPerPipelineLayout);
+    WDynamicUniformBuffer uniform{device, 2, sizeof(firstOne), offsetAlignment};
+    uniform.update(queue, 0, &firstOne);
+    uniform.update(queue, 1, &secondOne);
 
     WGPUSampler sampler = WSamplerBuilder{}.build(device);
     WTexture texture = WTextureBuilder::fromFileAsRgba8(device, "assets/textures/container.jpg");
@@ -120,8 +118,8 @@ void WEngine::run() {
         glfwPollEvents();
 
         presentFrame([&](WGPUTextureView frame) {
-            firstOne = glm::translate(firstOne, glm::vec3(00.1, 00.1, 0.0));
-            secondOne = glm::translate(secondOne, glm::vec3(-00.1, -00.1, -0.0001));
+            firstOne = glm::translate(firstOne, glm::vec3(0000000000.1, 000000000.1, 0.0));
+            secondOne = glm::translate(secondOne, glm::vec3(0, 0, -0.0000000001));
 
             WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
             std::vector<WGPUCommandBuffer> commandBuffers{};
@@ -132,8 +130,8 @@ void WEngine::run() {
                                                           .build(commandEncoder);
             wgpuRenderPassEncoderSetPipeline(renderPassEncoder, pipeline);
 
-            uniform.update(queue, &firstOne, 0, sizeof(firstOne));
-            uniform.update(queue, &secondOne, offsetAlignment, sizeof(secondOne));
+            uniform.update(queue, 0, &firstOne);
+            uniform.update(queue, 1, &secondOne);
 
             uint32_t dynamicOffset = 0;
             wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, bindGroup, 1, &dynamicOffset);
