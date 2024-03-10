@@ -120,6 +120,9 @@ void WEngine::run() {
         glfwPollEvents();
 
         presentFrame([&](WGPUTextureView frame) {
+            firstOne = glm::translate(firstOne, glm::vec3(00.1, 00.1, 0.0));
+            secondOne = glm::translate(secondOne, glm::vec3(-00.1, -00.1, -0.0001));
+
             WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
             std::vector<WGPUCommandBuffer> commandBuffers{};
 
@@ -129,19 +132,16 @@ void WEngine::run() {
                                                           .build(commandEncoder);
             wgpuRenderPassEncoderSetPipeline(renderPassEncoder, pipeline);
 
-            wgpuRenderPassEncoderSetVertexBuffer(renderPassEncoder, 0, triangle.vertex, 0, triangle.verticesSize);
-            wgpuRenderPassEncoderSetIndexBuffer(renderPassEncoder, triangle.index, WGPUIndexFormat_Uint32, 0, triangle.indicesSize);
+            uniform.update(queue, &firstOne, 0, sizeof(firstOne));
+            uniform.update(queue, &secondOne, offsetAlignment, sizeof(secondOne));
 
             uint32_t dynamicOffset = 0;
             wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, bindGroup, 1, &dynamicOffset);
-            wgpuRenderPassEncoderDrawIndexed(renderPassEncoder, triangle.indicesCount, 1, 0, 0, 0);
-
-            wgpuRenderPassEncoderSetVertexBuffer(renderPassEncoder, 0, quad.vertex, 0, quad.verticesSize);
-            wgpuRenderPassEncoderSetIndexBuffer(renderPassEncoder, quad.index, WGPUIndexFormat_Uint32, 0, quad.indicesSize);
+            triangle.render(renderPassEncoder);
 
             dynamicOffset = offsetAlignment;
             wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, bindGroup, 1, &dynamicOffset);
-            wgpuRenderPassEncoderDrawIndexed(renderPassEncoder, quad.indicesCount, 1, 0, 0, 0);
+            quad.render(renderPassEncoder);
 
             wgpuRenderPassEncoderEnd(renderPassEncoder);
             commandBuffers.push_back(wgpuCommandEncoderFinish(commandEncoder, nullptr));
