@@ -1,5 +1,19 @@
 #include <WBindings.hpp>
 
+WBindGroupLayoutBuilder& WBindGroupLayoutBuilder::addBindingDynamicUniform(uint32_t binding, WGPUShaderStageFlags visibility) {
+    entries.push_back(WGPUBindGroupLayoutEntry{
+        .binding = binding,
+        .visibility = visibility,
+        .buffer = WGPUBufferBindingLayout{
+            .type = WGPUBufferBindingType_Uniform,
+            .hasDynamicOffset = true,
+            .minBindingSize = 0,
+        },
+    });
+
+    return *this;
+}
+
 WBindGroupLayoutBuilder& WBindGroupLayoutBuilder::addBindingUniform(uint32_t binding, WGPUShaderStageFlags visibility) {
     entries.push_back(WGPUBindGroupLayoutEntry{
         .binding = binding,

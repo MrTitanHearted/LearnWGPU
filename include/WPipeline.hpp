@@ -25,7 +25,7 @@ struct WRenderPipelineBuilder {
     WRenderPipelineBuilder& addVertexBufferLayout(WVertexLayout layout);
     WRenderPipelineBuilder& setFragmentState(WGPUShaderModule shader, const char* entry);
     WRenderPipelineBuilder& setVertexState(WGPUShaderModule shader, const char* entry);
-    WRenderPipelineBuilder& setDepthState(WGPUCompareFunction depthCompare = WGPUCompareFunction_Less,
+    WRenderPipelineBuilder& setDefaultDepthState(WGPUCompareFunction depthCompare = WGPUCompareFunction_Less,
                                           WGPUTextureFormat format = WGPUTextureFormat_Depth32Float,
                                           bool depthWriteEnabled = true);
 

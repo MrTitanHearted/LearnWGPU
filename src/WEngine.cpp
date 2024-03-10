@@ -86,26 +86,25 @@ void WEngine::run() {
     firstOne = glm::translate(firstOne, glm::vec3(0.3, 0.2, 0.0));
     secondOne = glm::scale(secondOne, glm::vec3(1.0 / 3.0));
     secondOne = glm::translate(secondOne, glm::vec3(-0.3, -0.2, 1.0));
-    WUniformBuffer triangleUniform{device, &firstOne, sizeof(firstOne)};
-    WUniformBuffer quadUniform{device, &secondOne, sizeof(secondOne)};
+    uint32_t offsetAlignment = limits.minUniformBufferOffsetAlignment;
+    WUniformBuffer uniform{device, &firstOne, 2 * offsetAlignment};
+    uniform.update(queue, &firstOne, 0, sizeof(firstOne));
+    uniform.update(queue, &secondOne, offsetAlignment, sizeof(secondOne));
+
+    fmt::println("maxDynamicUniformBuffersPerPipelineLayout: {}", limits.maxDynamicUniformBuffersPerPipelineLayout);
 
     WGPUSampler sampler = WSamplerBuilder{}.build(device);
     WTexture texture = WTextureBuilder::fromFileAsRgba8(device, "assets/textures/container.jpg");
     WGPUBindGroupLayout bindGroupLayout = WBindGroupLayoutBuilder{}
                                               .addBindingSampler(0)
                                               .addBindingTexture(1)
-                                              .addBindingUniform(2)
+                                              .addBindingDynamicUniform(2)
                                               .build(device);
-    WGPUBindGroup triangleBindGroup = WBindGroupBuilder{}
-                                          .addBindingSampler(0, sampler)
-                                          .addBindingTexture(1, texture)
-                                          .addBindingUniform(2, triangleUniform)
-                                          .build(device, bindGroupLayout);
-    WGPUBindGroup quadBindGroup = WBindGroupBuilder{}
-                                      .addBindingSampler(0, sampler)
-                                      .addBindingTexture(1, texture)
-                                      .addBindingUniform(2, triangleUniform)
-                                      .build(device, bindGroupLayout);
+    WGPUBindGroup bindGroup = WBindGroupBuilder{}
+                                  .addBindingSampler(0, sampler)
+                                  .addBindingTexture(1, texture)
+                                  .addBindingUniform(2, uniform, sizeof(firstOne))
+                                  .build(device, bindGroupLayout);
     WGPUPipelineLayout pipelineLayout = WPipelineLayoutBuilder{}
                                             .addBindGroupLayout(bindGroupLayout)
                                             .build(device);
@@ -114,7 +113,7 @@ void WEngine::run() {
                                       .setFragmentState(shader, "fs_main")
                                       .addVertexBufferLayout(WVertex::desc())
                                       .addColorTarget(config.format)
-                                      .setDepthState()
+                                      .setDefaultDepthState()
                                       .build(device, pipelineLayout);
 
     while (!glfwWindowShouldClose(window)) {
@@ -129,13 +128,20 @@ void WEngine::run() {
                                                           .setDepthAttachment(depthTexture)
                                                           .build(commandEncoder);
             wgpuRenderPassEncoderSetPipeline(renderPassEncoder, pipeline);
-            wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, triangleBindGroup, 0, nullptr);
-            triangleUniform.update(queue, &firstOne);
-            triangle.render(renderPassEncoder);
 
-            wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, quadBindGroup, 0, nullptr);
-            quadUniform.update(queue, &secondOne);
-            quad.render(renderPassEncoder);
+            wgpuRenderPassEncoderSetVertexBuffer(renderPassEncoder, 0, triangle.vertex, 0, triangle.verticesSize);
+            wgpuRenderPassEncoderSetIndexBuffer(renderPassEncoder, triangle.index, WGPUIndexFormat_Uint32, 0, triangle.indicesSize);
+
+            uint32_t dynamicOffset = 0;
+            wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, bindGroup, 1, &dynamicOffset);
+            wgpuRenderPassEncoderDrawIndexed(renderPassEncoder, triangle.indicesCount, 1, 0, 0, 0);
+
+            wgpuRenderPassEncoderSetVertexBuffer(renderPassEncoder, 0, quad.vertex, 0, quad.verticesSize);
+            wgpuRenderPassEncoderSetIndexBuffer(renderPassEncoder, quad.index, WGPUIndexFormat_Uint32, 0, quad.indicesSize);
+
+            dynamicOffset = offsetAlignment;
+            wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, bindGroup, 1, &dynamicOffset);
+            wgpuRenderPassEncoderDrawIndexed(renderPassEncoder, quad.indicesCount, 1, 0, 0, 0);
 
             wgpuRenderPassEncoderEnd(renderPassEncoder);
             commandBuffers.push_back(wgpuCommandEncoderFinish(commandEncoder, nullptr));
@@ -206,6 +212,10 @@ WEngine::WEngine() {
     wgpuSurfaceCapabilitiesFreeMembers(caps);
 
     depthTexture = WTexture::GetDepthTexture(device, WGPUExtent3D{width, height, 1});
+
+    WGPUSupportedLimits supportedLimits{};
+    wgpuDeviceGetLimits(device, &supportedLimits);
+    limits = supportedLimits.limits;
 }
 
 WEngine::~WEngine() {

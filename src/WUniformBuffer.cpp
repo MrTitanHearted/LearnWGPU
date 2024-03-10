@@ -17,4 +17,9 @@ WUniformBuffer::WUniformBuffer(WGPUDevice device, const void* data, size_t size)
 
 void WUniformBuffer::update(WGPUQueue queue, const void* data) {
     wgpuQueueWriteBuffer(queue, buffer, 0, data, size);
+    // update(queue, data, 0, size);
+}
+
+void WUniformBuffer::update(WGPUQueue queue, const void* data, uint32_t offset, uint32_t size) {
+    wgpuQueueWriteBuffer(queue, buffer, offset, data, size);
 }

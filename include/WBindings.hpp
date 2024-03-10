@@ -7,6 +7,7 @@ struct WBindGroupLayoutBuilder {
     std::vector<WGPUBindGroupLayoutEntry> entries;
     WGPUBindGroupLayoutDescriptor desc;
 
+    WBindGroupLayoutBuilder& addBindingDynamicUniform(uint32_t binding, WGPUShaderStageFlags visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment | WGPUShaderStage_Compute);
     WBindGroupLayoutBuilder& addBindingUniform(uint32_t binding, WGPUShaderStageFlags visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment | WGPUShaderStage_Compute);
     WBindGroupLayoutBuilder& addBindingTexture(uint32_t binding, WGPUShaderStageFlags visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment | WGPUShaderStage_Compute);
     WBindGroupLayoutBuilder& addBindingSampler(uint32_t binding, WGPUShaderStageFlags visibility = WGPUShaderStage_Vertex | WGPUShaderStage_Fragment | WGPUShaderStage_Compute);

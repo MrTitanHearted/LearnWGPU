@@ -32,6 +32,8 @@ class WEngine {
 
     WTexture depthTexture;
 
+    WGPULimits limits;
+
     WEngine();
     ~WEngine();
 

@@ -12,4 +12,5 @@ struct WUniformBuffer {
     WUniformBuffer(WGPUDevice device, const void *data, size_t size);
 
     void update(WGPUQueue queue, const void *data);
+    void update(WGPUQueue queue, const void *data, uint32_t offset, uint32_t size);
 };

@@ -37,7 +37,7 @@ WRenderPipelineBuilder& WRenderPipelineBuilder::setVertexState(WGPUShaderModule 
     return *this;
 }
 
-WRenderPipelineBuilder& WRenderPipelineBuilder::setDepthState(WGPUCompareFunction depthCompare, WGPUTextureFormat format, bool depthWriteEnabled) {
+WRenderPipelineBuilder& WRenderPipelineBuilder::setDefaultDepthState(WGPUCompareFunction depthCompare, WGPUTextureFormat format, bool depthWriteEnabled) {
     depthStencilState.format = format;
     depthStencilState.depthCompare = depthCompare;
     depthStencilState.depthWriteEnabled = depthWriteEnabled;
