@@ -1,6 +1,6 @@
 @echo off
 
-set ZIP_URL=https://github.com/gfx-rs/wgpu-native/releases/download/v0.19.1.1/wgpu-windows-i686-debug.zip
+set ZIP_URL=https://github.com/gfx-rs/wgpu-native/releases/download/v0.19.3.1/wgpu-windows-x86_64-debug.zip
 set DEST_DIR=.\wgpu-cmake
 set ZIP_FILE=.\wgpu-native.zip
 
@@ -25,6 +25,6 @@ REM Set up wgpuConfig.cmake file
 copy scripts\windows.cmake "%DEST_DIR%\wgpuConfig.cmake"
 
 REM Generate build files...
-cmake -B build -T host=x86 -A win32
+cmake -B build
 
 echo Installation completed successfully!

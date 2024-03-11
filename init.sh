@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ZIP_URL="https://github.com/gfx-rs/wgpu-native/releases/download/v0.19.1.1/wgpu-windows-i686-debug.zip"
+ZIP_URL="https://github.com/gfx-rs/wgpu-native/releases/download/v0.19.3.1/wgpu-windows-x86_64-debug.zip"
 DEST_DIR="./wgpu-cmake"
 ZIP_FILE="./wgpu-native.zip"
 
