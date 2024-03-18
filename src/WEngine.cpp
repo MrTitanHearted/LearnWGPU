@@ -156,7 +156,21 @@ WEngine::WEngine() {
     glfwSetKeyCallback(window, handleGlfwKey);
     glfwSetFramebufferSizeCallback(window, resizeGlfwFramebuffer);
 
+#ifdef WENGINE_PLATFORM_WINDOWS
+    WGPUInstanceExtras instanceExtras{
+        .chain = WGPUChainedStruct{
+            .sType = (WGPUSType)WGPUSType_InstanceExtras,
+        },
+        .backends = WGPUInstanceBackend_DX12,
+    };
+    WGPUInstanceDescriptor instanceDesc{
+        .nextInChain = (WGPUChainedStruct *)&instanceExtras,
+    };
+    instance = wgpuCreateInstance(&instanceDesc);
+#else
     instance = wgpuCreateInstance(nullptr);
+#endif
+
     surface = glfwGetWGPUSurface(window, instance);
     WGPURequestAdapterOptions adapterOpts{.compatibleSurface = surface};
     wgpuInstanceRequestAdapter(
