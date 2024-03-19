@@ -16,6 +16,7 @@ struct WRenderBuffer {
     WRenderBuffer(WGPUDevice device, const void *vertices, size_t verticesCount, size_t verticesSize, const uint32_t *indices, size_t indicesCount);
 
     void render(WGPURenderPassEncoder encoder);
+    void render(WGPURenderBundleEncoder encoder);
 };
 
 struct WRenderBufferBuilder {
@@ -25,7 +26,7 @@ struct WRenderBufferBuilder {
     size_t verticesCount;
     size_t indicesCount;
 
-    template <class Vertex>
+    template <typename Vertex>
     WRenderBufferBuilder &setVertices(const std::vector<Vertex> &vertices) {
         this->verticesCount = vertices.size();
         this->verticesSize = sizeof(Vertex) * this->verticesCount;

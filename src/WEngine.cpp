@@ -6,6 +6,7 @@
 #include <WBindings.hpp>
 #include <WSampler.hpp>
 #include <WTexture.hpp>
+#include <WMesh.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -57,70 +58,99 @@ WEngine &WEngine::GetInstance() {
 
 void WEngine::run() {
     WGPUShaderModule shader = shaderFromFile(device, "assets/shaders/shader.wgsl");
-    std::vector<WVertex> triangleVertices{
-        WVertex::New(-0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0),
-        WVertex::New(0.0, 0.5, 0.5, 0.0, 1.0, 0.0, 0.5, 1.0),
-        WVertex::New(0.5, -0.5, 0.5, 0.0, 0.0, 1.0, 1.0, 0.0),
-    };
-    std::vector<uint32_t> triangleIndices{0, 1, 2};
-    std::vector<WVertex> quadVertices{
-        WVertex::New(-0.5, -0.5, 0.8, 1.0, 0.0, 0.0, 0.0, 0.0),
-        WVertex::New(-0.5, 0.5, 0.8, 0.0, 1.0, 0.0, 0.0, 1.0),
-        WVertex::New(0.5, 0.5, 0.8, 0.0, 0.0, 1.0, 1.0, 1.0),
-        WVertex::New(0.5, -0.5, 0.8, 1.0, 1.0, 0.0, 1.0, 0.0),
-    };
-    std::vector<uint32_t> quadIndices{0, 1, 2, 0, 2, 3};
-    WRenderBuffer triangle = WRenderBufferBuilder{}
-                                 .setVertices(triangleVertices)
-                                 .setIndices(triangleIndices)
-                                 .build(device);
-    WRenderBuffer quad = WRenderBufferBuilder{}
-                             .setVertices(quadVertices)
-                             .setIndices(quadIndices)
-                             .build(device);
+    WRenderBuffer triangleRenderBuffer;
+    WRenderBuffer quadRenderBuffer;
+    {
+        std::vector<WVertex> triangleVertices{
+            WVertex::New(-0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0),
+            WVertex::New(0.0, 0.5, 0.5, 0.0, 1.0, 0.0, 0.5, 1.0),
+            WVertex::New(0.5, -0.5, 0.5, 0.0, 0.0, 1.0, 1.0, 0.0),
+        };
+        std::vector<uint32_t> triangleIndices{0, 1, 2};
+        std::vector<WVertex> quadVertices{
+            WVertex::New(-0.5, -0.5, 0.8, 1.0, 0.0, 0.0, 0.0, 0.0),
+            WVertex::New(-0.5, 0.5, 0.8, 0.0, 1.0, 0.0, 0.0, 1.0),
+            WVertex::New(0.5, 0.5, 0.8, 0.0, 0.0, 1.0, 1.0, 1.0),
+            WVertex::New(0.5, -0.5, 0.8, 1.0, 1.0, 0.0, 1.0, 0.0),
+        };
+        std::vector<uint32_t> quadIndices{0, 1, 2, 0, 2, 3};
 
-    glm::mat4 firstOne{1.0f};
-    glm::mat4 secondOne{1.0};
+        triangleRenderBuffer =
+            WRenderBufferBuilder{}
+                .setVertices(triangleVertices)
+                .setIndices(triangleIndices)
+                .build(device);
+        quadRenderBuffer =
+            WRenderBufferBuilder{}
+                .setVertices(quadVertices)
+                .setIndices(quadIndices)
+                .build(device);
+    }
 
-    firstOne = glm::scale(firstOne, glm::vec3(1.0 / 2.0));
-    firstOne = glm::translate(firstOne, glm::vec3(0.3, 0.2, 0.0));
-    secondOne = glm::scale(secondOne, glm::vec3(1.0 / 3.0));
-    secondOne = glm::translate(secondOne, glm::vec3(-0.3, -0.2, 1.0));
-    uint32_t offsetAlignment = limits.minUniformBufferOffsetAlignment;
-    WDynamicUniformBuffer uniform{device, 2, sizeof(firstOne), offsetAlignment};
-    uniform.update(queue, 0, &firstOne);
-    uniform.update(queue, 1, &secondOne);
+    glm::mat4 triangleData{1.0f};
+    glm::mat4 quadData{1.0};
+
+    triangleData = glm::scale(triangleData, glm::vec3(1.0 / 2.0));
+    triangleData = glm::translate(triangleData, glm::vec3(0.3, 0.2, 0.0));
+    quadData = glm::scale(quadData, glm::vec3(1.0 / 3.0));
+    quadData = glm::translate(quadData, glm::vec3(-0.3, -0.2, 1.0));
+    WUniformBuffer triangleUniform = WUniformBuffer{device, &triangleData, sizeof(triangleData)};
+    WUniformBuffer quadUniform = WUniformBuffer{device, &quadData, sizeof(quadData)};
 
     WGPUSampler sampler = WSamplerBuilder{}.build(device);
     WTexture texture = WTextureBuilder::fromFileAsRgba8(device, "assets/textures/container.jpg");
-    WGPUBindGroupLayout bindGroupLayout = WBindGroupLayoutBuilder{}
-                                              .addBindingSampler(0)
-                                              .addBindingTexture(1)
-                                              .addBindingDynamicUniform(2)
-                                              .build(device);
-    WGPUBindGroup bindGroup = WBindGroupBuilder{}
-                                  .addBindingSampler(0, sampler)
-                                  .addBindingTexture(1, texture)
-                                  .addBindingUniform(2, uniform, sizeof(firstOne))
-                                  .build(device, bindGroupLayout);
-    WGPUPipelineLayout pipelineLayout = WPipelineLayoutBuilder{}
-                                            .addBindGroupLayout(bindGroupLayout)
-                                            .build(device);
-    WGPURenderPipeline pipeline = WRenderPipelineBuilder{}
-                                      .setVertexState(shader, "vs_main")
-                                      .setFragmentState(shader, "fs_main")
-                                      .addVertexBufferLayout(WVertex::desc())
-                                      .addColorTarget(config.format)
-                                      .setDefaultDepthState()
-                                      .build(device, pipelineLayout);
+    WGPUBindGroupLayout bindGroupLayout =
+        WBindGroupLayoutBuilder{}
+            .addBindingSampler(0)
+            .addBindingTexture(1)
+            .addBindingUniform(2)
+            .build(device);
+    WGPUBindGroup triangleBindGroup =
+        WBindGroupBuilder{}
+            .addBindingSampler(0, sampler)
+            .addBindingTexture(1, texture)
+            .addBindingUniform(2, triangleUniform)
+            .build(device, bindGroupLayout);
+    WGPUBindGroup quadBindGroup =
+        WBindGroupBuilder{}
+            .addBindingSampler(0, sampler)
+            .addBindingTexture(1, texture)
+            .addBindingUniform(2, quadUniform)
+            .build(device, bindGroupLayout);
+    WGPUPipelineLayout pipelineLayout =
+        WPipelineLayoutBuilder{}
+            .addBindGroupLayout(bindGroupLayout)
+            .build(device);
+    WGPURenderPipeline pipeline =
+        WRenderPipelineBuilder{}
+            .setVertexState(shader, "vs_main")
+            .setFragmentState(shader, "fs_main")
+            .addVertexBufferLayout(WVertex::desc())
+            .addColorTarget(config.format)
+            .setDefaultDepthState()
+            .build(device, pipelineLayout);
+    WMesh triangle =
+        WMeshBuilder::New()
+            .addBindGroup(triangleBindGroup)
+            .addColorFormat(config.format)
+            .setRenderBuffer(triangleRenderBuffer)
+            .setDefaultDepthFormat()
+            .setRenderPipeline(pipeline)
+            .build(device);
+    WMesh quad =
+        WMeshBuilder::New()
+            .addBindGroup(quadBindGroup)
+            .addColorFormat(config.format)
+            .setRenderBuffer(quadRenderBuffer)
+            .setDefaultDepthFormat()
+            .setRenderPipeline(pipeline)
+            .build(device);
+    std::vector<WGPURenderBundle> renderBundles{triangle, quad};
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
         presentFrame([&](WGPUTextureView frame) {
-            firstOne = glm::translate(firstOne, glm::vec3(0000000000.1, 000000000.1, 0.0));
-            secondOne = glm::translate(secondOne, glm::vec3(0, 0, -0.0000000001));
-
             WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
             std::vector<WGPUCommandBuffer> commandBuffers{};
 
@@ -130,16 +160,7 @@ void WEngine::run() {
                                                           .build(commandEncoder);
             wgpuRenderPassEncoderSetPipeline(renderPassEncoder, pipeline);
 
-            uniform.update(queue, 0, &firstOne);
-            uniform.update(queue, 1, &secondOne);
-
-            uint32_t dynamicOffset = 0;
-            wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, bindGroup, 1, &dynamicOffset);
-            triangle.render(renderPassEncoder);
-
-            dynamicOffset = offsetAlignment;
-            wgpuRenderPassEncoderSetBindGroup(renderPassEncoder, 0, bindGroup, 1, &dynamicOffset);
-            quad.render(renderPassEncoder);
+            wgpuRenderPassEncoderExecuteBundles(renderPassEncoder, renderBundles.size(), renderBundles.data());
 
             wgpuRenderPassEncoderEnd(renderPassEncoder);
             commandBuffers.push_back(wgpuCommandEncoderFinish(commandEncoder, nullptr));

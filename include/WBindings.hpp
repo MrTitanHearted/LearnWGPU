@@ -19,8 +19,6 @@ struct WBindGroupBuilder {
     std::vector<WGPUBindGroupEntry> entries;
     WGPUBindGroupDescriptor desc;
 
-    WBindGroupBuilder& addBindingDynamicUniform(uint32_t binding, WGPUBuffer buffer, size_t size);
-    WBindGroupBuilder& addBindingDynamicUniform(uint32_t binding, WDynamicUniformBuffer buffer);
     WBindGroupBuilder& addBindingUniform(uint32_t binding, WGPUBuffer buffer, size_t size);
     WBindGroupBuilder& addBindingUniform(uint32_t binding, WUniformBuffer buffer);
     WBindGroupBuilder& addBindingTexture(uint32_t binding, WGPUTextureView view);

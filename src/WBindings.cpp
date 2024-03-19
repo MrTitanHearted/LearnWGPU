@@ -60,14 +60,6 @@ WGPUBindGroupLayout WBindGroupLayoutBuilder::build(WGPUDevice device) {
     return wgpuDeviceCreateBindGroupLayout(device, &desc);
 }
 
-WBindGroupBuilder& WBindGroupBuilder::addBindingDynamicUniform(uint32_t binding, WGPUBuffer buffer, size_t size) {
-    return addBindingUniform(binding, buffer, size);
-}
-
-WBindGroupBuilder& WBindGroupBuilder::addBindingDynamicUniform(uint32_t binding, WDynamicUniformBuffer buffer) {
-    return addBindingDynamicUniform(binding, buffer, buffer.size);
-}
-
 WBindGroupBuilder& WBindGroupBuilder::addBindingUniform(uint32_t binding, WGPUBuffer buffer, size_t size) {
     entries.push_back(WGPUBindGroupEntry{
         .binding = binding,

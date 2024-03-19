@@ -29,6 +29,12 @@ void WRenderBuffer::render(WGPURenderPassEncoder encoder) {
     wgpuRenderPassEncoderDrawIndexed(encoder, indicesCount, 1, 0, 0, 0);
 }
 
+void WRenderBuffer::render(WGPURenderBundleEncoder encoder) {
+    wgpuRenderBundleEncoderSetVertexBuffer(encoder, 0, vertex, 0, verticesSize);
+    wgpuRenderBundleEncoderSetIndexBuffer(encoder, index, WGPUIndexFormat_Uint32, 0, indicesSize);
+    wgpuRenderBundleEncoderDrawIndexed(encoder, indicesCount, 1, 0, 0, 0);
+}
+
 WRenderBufferBuilder& WRenderBufferBuilder::setIndices(const std::vector<uint32_t>& indices) {
     this->indicesCount = indices.size();
     this->indices = indices.data();
