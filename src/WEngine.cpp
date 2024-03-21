@@ -1,12 +1,6 @@
 #include <WEngine.hpp>
 
-#include <WRenderBuffer.hpp>
-#include <WRenderPass.hpp>
-#include <WPipeline.hpp>
-#include <WBindings.hpp>
-#include <WSampler.hpp>
-#include <WTexture.hpp>
-#include <WMesh.hpp>
+#include <WUtils.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -26,18 +20,19 @@ struct WVertex {
 };
 
 WVertexLayout WVertex::desc() {
-    return WVertexLayout{sizeof(WVertex)}
-        .addAttributes(WGPUVertexFormat_Float32x3, offsetof(WVertex, pos), 0)
-        .addAttributes(WGPUVertexFormat_Float32x3, offsetof(WVertex, color), 1)
-        .addAttributes(WGPUVertexFormat_Float32x2, offsetof(WVertex, uv), 2);
+    return WVertexLayout::New(sizeof(WVertex))
+        .addAttribute(WGPUVertexFormat_Float32x3, offsetof(WVertex, pos), 0)
+        .addAttribute(WGPUVertexFormat_Float32x3, offsetof(WVertex, color), 1)
+        .addAttribute(WGPUVertexFormat_Float32x2, offsetof(WVertex, uv), 2);
 }
 
 WEngine *WEngine::engine = nullptr;
 
-void WEngine::Init() {
+void WEngine::Initialize() {
     if (engine == nullptr) {
         glfwInit();
-        engine = new WEngine{};
+
+        engine = new WEngine();
     }
 }
 
@@ -51,101 +46,59 @@ void WEngine::Shutdown() {
 
 WEngine &WEngine::GetInstance() {
     if (engine == nullptr) {
-        throw std::runtime_error("You should first call 'Init()' method!");
+        throw std::exception("[WEngine]::[ERROR]: You should call 'Initialize()' method first!");
     }
+
     return *engine;
 }
 
 void WEngine::run() {
-    WGPUShaderModule shader = shaderFromFile(device, "assets/shaders/shader.wgsl");
-    WRenderBuffer triangleRenderBuffer;
-    WRenderBuffer quadRenderBuffer;
-    {
-        std::vector<WVertex> triangleVertices{
-            WVertex::New(-0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0),
-            WVertex::New(0.0, 0.5, 0.5, 0.0, 1.0, 0.0, 0.5, 1.0),
-            WVertex::New(0.5, -0.5, 0.5, 0.0, 0.0, 1.0, 1.0, 0.0),
-        };
-        std::vector<uint32_t> triangleIndices{0, 1, 2};
-        std::vector<WVertex> quadVertices{
+    WGPUShaderModule shader = shaderFromWgslFile(device, "assets/shaders/shader.wgsl");
+
+        std::vector<WVertex> vertices{
             WVertex::New(-0.5, -0.5, 0.8, 1.0, 0.0, 0.0, 0.0, 0.0),
             WVertex::New(-0.5, 0.5, 0.8, 0.0, 1.0, 0.0, 0.0, 1.0),
             WVertex::New(0.5, 0.5, 0.8, 0.0, 0.0, 1.0, 1.0, 1.0),
             WVertex::New(0.5, -0.5, 0.8, 1.0, 1.0, 0.0, 1.0, 0.0),
         };
-        std::vector<uint32_t> quadIndices{0, 1, 2, 0, 2, 3};
+        std::vector<uint32_t> indices{0, 1, 2, 0, 2, 3};
 
-        triangleRenderBuffer =
-            WRenderBufferBuilder{}
-                .setVertices(triangleVertices)
-                .setIndices(triangleIndices)
-                .build(device);
-        quadRenderBuffer =
-            WRenderBufferBuilder{}
-                .setVertices(quadVertices)
-                .setIndices(quadIndices)
-                .build(device);
-    }
-
-    glm::mat4 triangleData{1.0f};
-    glm::mat4 quadData{1.0};
-
-    triangleData = glm::scale(triangleData, glm::vec3(1.0 / 2.0));
-    triangleData = glm::translate(triangleData, glm::vec3(0.3, 0.2, 0.0));
-    quadData = glm::scale(quadData, glm::vec3(1.0 / 3.0));
-    quadData = glm::translate(quadData, glm::vec3(-0.3, -0.2, 1.0));
-    WUniformBuffer triangleUniform = WUniformBuffer{device, &triangleData, sizeof(triangleData)};
-    WUniformBuffer quadUniform = WUniformBuffer{device, &quadData, sizeof(quadData)};
-
-    WGPUSampler sampler = WSamplerBuilder{}.build(device);
-    WTexture texture = WTextureBuilder::fromFileAsRgba8(device, "assets/textures/container.jpg");
-    WGPUBindGroupLayout bindGroupLayout =
-        WBindGroupLayoutBuilder{}
-            .addBindingSampler(0)
-            .addBindingTexture(1)
-            .addBindingUniform(2)
+    WRenderBuffer renderBuffer =
+        WRenderBufferBuilder::New()
+            .setVertices(vertices)
+            .setIndices(indices)
             .build(device);
-    WGPUBindGroup triangleBindGroup =
-        WBindGroupBuilder{}
-            .addBindingSampler(0, sampler)
-            .addBindingTexture(1, texture)
-            .addBindingUniform(2, triangleUniform)
-            .build(device, bindGroupLayout);
-    WGPUBindGroup quadBindGroup =
-        WBindGroupBuilder{}
-            .addBindingSampler(0, sampler)
-            .addBindingTexture(1, texture)
-            .addBindingUniform(2, quadUniform)
-            .build(device, bindGroupLayout);
-    WGPUPipelineLayout pipelineLayout =
-        WPipelineLayoutBuilder{}
-            .addBindGroupLayout(bindGroupLayout)
-            .build(device);
-    WGPURenderPipeline pipeline =
-        WRenderPipelineBuilder{}
-            .setVertexState(shader, "vs_main")
-            .setFragmentState(shader, "fs_main")
-            .addVertexBufferLayout(WVertex::desc())
+
+    WGPUSampler sampler = WSamplerBuilder::New().build(device);
+    WTexture texture = WTexture::fromFileAsRgba8(device, "assets/textures/awesomeface.png");
+    glm::mat4 uniformData{1.0};
+    WUniformBuffer uniformBuffer = WUniformBuffer::New(device, &uniformData, sizeof(uniformData));
+
+    WBindGroup bindGroup = 
+        WBindGroupBuilder::New()
+        .addBindingSampler(0, sampler)
+        .addBindingTexture(1, texture)
+        .addBindingUniform(2, uniformBuffer)
+        .build(device);
+
+    WRenderPipeline pipeline =
+        WRenderPipelineBuilder::New()
+            .addBindGroupLayout(bindGroup)
+            .setVertexState(shader)
+            .setFragmentState(shader)
             .addColorTarget(config.format)
+            .addVertexBufferLayout(WVertex::desc())
             .setDefaultDepthState()
-            .build(device, pipelineLayout);
-    WMesh triangle =
-        WMeshBuilder::New()
-            .addBindGroup(triangleBindGroup)
-            .addColorFormat(config.format)
-            .setRenderBuffer(triangleRenderBuffer)
-            .setDefaultDepthFormat()
-            .setRenderPipeline(pipeline)
             .build(device);
-    WMesh quad =
-        WMeshBuilder::New()
-            .addBindGroup(quadBindGroup)
-            .addColorFormat(config.format)
-            .setRenderBuffer(quadRenderBuffer)
-            .setDefaultDepthFormat()
+
+    WRenderBundle renderBundle =
+        WRenderBundleBuilder::New()
+            .addBindGroup(bindGroup)
             .setRenderPipeline(pipeline)
+            .setRenderBuffer(renderBuffer)
+            .addColorFormat(config.format)
+            .setDefaultDepthFormat()
             .build(device);
-    std::vector<WGPURenderBundle> renderBundles{triangle, quad};
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -154,72 +107,85 @@ void WEngine::run() {
             WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
             std::vector<WGPUCommandBuffer> commandBuffers{};
 
-            WGPURenderPassEncoder renderPassEncoder = WRenderPassBuilder{}
-                                                          .addColorAttachment(frame, WGPUColor{0.2, 0.3, 0.3, 1.0})
-                                                          .setDepthAttachment(depthTexture)
-                                                          .build(commandEncoder);
-            wgpuRenderPassEncoderSetPipeline(renderPassEncoder, pipeline);
+            WGPURenderPassEncoder encoder =
+                WRenderPassBuilder::New()
+                    .addColorTarget(WColorAttachment::New(frame).setClearColor(0.2, 0.3, 0.3, 1.0))
+                    .setDepthAttachment(WDepthStencilAttachment::New(depthTexture))
+                    .build(commandEncoder);
 
-            wgpuRenderPassEncoderExecuteBundles(renderPassEncoder, renderBundles.size(), renderBundles.data());
+            renderBundle.render(encoder);
 
-            wgpuRenderPassEncoderEnd(renderPassEncoder);
+            wgpuRenderPassEncoderEnd(encoder);
+
             commandBuffers.push_back(wgpuCommandEncoderFinish(commandEncoder, nullptr));
 
             wgpuQueueSubmit(queue, commandBuffers.size(), commandBuffers.data());
+
+            for (const WGPUCommandBuffer &commandBuffer : commandBuffers) {
+                wgpuCommandBufferRelease(commandBuffer);
+            }
+            wgpuCommandEncoderRelease(commandEncoder);
         });
     }
 }
 
 WEngine::WEngine() {
+    setupLogging();
+
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
-    glfwSetKeyCallback(window, handleGlfwKey);
-    glfwSetFramebufferSizeCallback(window, resizeGlfwFramebuffer);
+    glfwSetKeyCallback(window, glfwKeyCallback);
+    glfwSetFramebufferSizeCallback(window, glfwFramebuffersizeCallback);
 
-#ifdef WENGINE_PLATFORM_WINDOWS
     WGPUInstanceExtras instanceExtras{
         .chain = WGPUChainedStruct{
             .sType = (WGPUSType)WGPUSType_InstanceExtras,
         },
-        .backends = WGPUInstanceBackend_DX12,
+        .backends = WGPUInstanceBackend_Primary,
     };
-    WGPUInstanceDescriptor instanceDesc{
+    WGPUInstanceDescriptor instanceDescriptor{
         .nextInChain = (WGPUChainedStruct *)&instanceExtras,
     };
-    instance = wgpuCreateInstance(&instanceDesc);
-#else
-    instance = wgpuCreateInstance(nullptr);
+#ifdef WENGINE_PLATFORM_WINDOWS
+    instanceExtras.backends = WGPUInstanceBackend_DX12;
 #endif
+    instance = wgpuCreateInstance(&instanceDescriptor);
 
     surface = glfwGetWGPUSurface(window, instance);
-    WGPURequestAdapterOptions adapterOpts{.compatibleSurface = surface};
+    WGPURequestAdapterOptions adapterOptions{.compatibleSurface = surface};
     wgpuInstanceRequestAdapter(
         instance,
-        &adapterOpts,
+        &adapterOptions,
         [](WGPURequestAdapterStatus status, WGPUAdapter adapter, const char *message, void *userdata) {
-            if (status == WGPURequestAdapterStatus_Success) {
-                WEngine &engine = *(WEngine *)userdata;
-                engine.adapter = adapter;
-            } else {
-                throw std::runtime_error(fmt::format("Failed to request an adapter!: {}", message));
+            switch (status) {
+                case WGPURequestAdapterStatus_Success: {
+                    WGPUAdapter *engineAdapter = (WGPUAdapter *)userdata;
+                    *engineAdapter = adapter;
+                } break;
+                default: {
+                    throw std::exception(fmt::format("[WEngine]::[ERROR]: Failed to request adapter!: '{}'", message).c_str());
+                } break;
             }
         },
-        this);
+        &this->adapter);
     wgpuAdapterRequestDevice(
         adapter,
         nullptr,
         [](WGPURequestDeviceStatus status, WGPUDevice device, const char *message, void *userdata) {
-            if (status == WGPURequestDeviceStatus_Success) {
-                WEngine &engine = *(WEngine *)userdata;
-                engine.device = device;
-            } else {
-                throw std::runtime_error(fmt::format("Failed to request a device!: {}", message));
+            switch (status) {
+                case WGPURequestDeviceStatus_Success: {
+                    WGPUDevice *engineDevice = (WGPUDevice *)userdata;
+                    *engineDevice = device;
+                } break;
+                default: {
+                    throw std::exception(fmt::format("[WEngine]::[ERROR]: Failed to request device!: '{}'", message).c_str());
+                } break;
             }
         },
-        this);
+        &this->device);
     queue = wgpuDeviceGetQueue(device);
-    WGPUSurfaceCapabilities caps;
+    WGPUSurfaceCapabilities caps{};
     wgpuSurfaceGetCapabilities(surface, adapter, &caps);
     config = WGPUSurfaceConfiguration{
         .device = device,
@@ -230,12 +196,12 @@ WEngine::WEngine() {
         .alphaMode = caps.alphaModes[0],
         .width = width,
         .height = height,
-        .presentMode = WGPUPresentMode_Fifo,
+        .presentMode = caps.presentModes[0],
     };
 #ifdef WENGINE_PLATFORM_WINDOWS
     config.format = WGPUTextureFormat_RGBA8Unorm;
 #endif
-    for (int i = 0; i < caps.presentModeCount; i++) {
+    for (uint32_t i = 0; i < caps.presentModeCount; i++) {
         if (WGPUPresentMode_Mailbox == caps.presentModes[i]) {
             config.presentMode = WGPUPresentMode_Mailbox;
             break;
@@ -244,11 +210,11 @@ WEngine::WEngine() {
     wgpuSurfaceConfigure(surface, &config);
     wgpuSurfaceCapabilitiesFreeMembers(caps);
 
-    depthTexture = WTexture::GetDepthTexture(device, WGPUExtent3D{width, height, 1});
-
     WGPUSupportedLimits supportedLimits{};
     wgpuDeviceGetLimits(device, &supportedLimits);
     limits = supportedLimits.limits;
+
+    depthTexture = WTexture::GetDepthTexture(device, width, height);
 }
 
 WEngine::~WEngine() {
@@ -280,17 +246,16 @@ void WEngine::presentFrame(std::function<void(WGPUTextureView)> frame) {
             if (width != 0 && height != 0) {
                 config.width = width;
                 config.height = height;
+                depthTexture = WTexture::GetDepthTexture(device, config.width, config.height);
                 wgpuSurfaceConfigure(surface, &config);
-
-                depthTexture = WTexture::GetDepthTexture(device, WGPUExtent3D{(uint32_t)width, (uint32_t)height, 1});
             }
-            std::cout << "Resizing in the main function!" << std::endl;
+            std::cout << "[WEngine]::[INFO]: Resizing in the main function!" << std::endl;
             skip = true;
         }
         case WGPUSurfaceGetCurrentTextureStatus_OutOfMemory:
         case WGPUSurfaceGetCurrentTextureStatus_DeviceLost:
         case WGPUSurfaceGetCurrentTextureStatus_Force32:
-            throw std::runtime_error(fmt::format("get_current_texture status={}", (uint32_t)surfaceTexture.status));
+            throw std::exception(fmt::format("[WEngine]::[ERROR]: get_current_texture status={}", (uint32_t)surfaceTexture.status).c_str());
     }
 
     if (!skip) {
@@ -303,52 +268,141 @@ void WEngine::presentFrame(std::function<void(WGPUTextureView)> frame) {
     }
 }
 
-void WEngine::handleGlfwKey(GLFWwindow *window, int key, int scancode, int action, int mods) {
-    // WEngine &engine = *(WEngine *)glfwGetWindowUserPointer(window);
+void WEngine::setupLogging(WGPULogLevel level) const {
+    wgpuSetLogCallback(wgpuLogCallback, nullptr);
+    wgpuSetLogLevel(level);
+}
+
+void WEngine::printWGPUReport() const {
+    WGPUGlobalReport report{};
+    wgpuGenerateReport(instance, &report);
+
+    std::function<void(const char *, WGPURegistryReport)> printRegistryReport = [](const char *prefix, WGPURegistryReport report) {
+        fmt::println("\nBegin {}", prefix);
+        fmt::println("{}.numAllocated = {}", prefix, report.numAllocated);
+        fmt::println("{}.numKeptFromUser = {}", prefix, report.numKeptFromUser);
+        fmt::println("{}.numReleasedFromUser = {}", prefix, report.numReleasedFromUser);
+        fmt::println("{}.numError = {}", prefix, report.numError);
+        fmt::println("{}.elementSize = {}", prefix, report.elementSize);
+        fmt::println("End {}\n", prefix);
+    };
+    std::function<void(const char *, WGPUHubReport)> printHubReport = [&](const char *prefix, WGPUHubReport report) {
+        printRegistryReport(fmt::format("{}{}", prefix, "adapters").c_str(), report.adapters);
+        printRegistryReport(fmt::format("{}{}", prefix, "devices").c_str(), report.devices);
+        printRegistryReport(fmt::format("{}{}", prefix, "queues").c_str(), report.queues);
+        printRegistryReport(fmt::format("{}{}", prefix, "pipelineLayouts").c_str(), report.pipelineLayouts);
+        printRegistryReport(fmt::format("{}{}", prefix, "shaderModules").c_str(), report.shaderModules);
+        printRegistryReport(fmt::format("{}{}", prefix, "bindGroupLayouts").c_str(), report.bindGroupLayouts);
+        printRegistryReport(fmt::format("{}{}", prefix, "bindGroups").c_str(), report.bindGroups);
+        printRegistryReport(fmt::format("{}{}", prefix, "commandBuffers").c_str(), report.commandBuffers);
+        printRegistryReport(fmt::format("{}{}", prefix, "renderBundles").c_str(), report.renderBundles);
+        printRegistryReport(fmt::format("{}{}", prefix, "renderPipelines").c_str(), report.renderPipelines);
+        printRegistryReport(fmt::format("{}{}", prefix, "computePipelines").c_str(), report.computePipelines);
+        printRegistryReport(fmt::format("{}{}", prefix, "querySets").c_str(), report.querySets);
+        printRegistryReport(fmt::format("{}{}", prefix, "textures").c_str(), report.textures);
+        printRegistryReport(fmt::format("{}{}", prefix, "textureViews").c_str(), report.textureViews);
+        printRegistryReport(fmt::format("{}{}", prefix, "samplers").c_str(), report.samplers);
+        printRegistryReport(fmt::format("{}{}", prefix, "buffers").c_str(), report.buffers);
+    };
+
+    fmt::println("------------------------[WEngine]::[INFO]::[WGPU_REPORT]------------------------------------");
+
+    printRegistryReport("\tsurfaces", report.surfaces);
+
+    switch (report.backendType) {
+        case WGPUBackendType_D3D12:
+            printHubReport("\tdx12.", report.dx12);
+            break;
+        case WGPUBackendType_Metal:
+            printHubReport("\tmetal.", report.metal);
+            break;
+        case WGPUBackendType_Vulkan:
+            printHubReport("\tvulkan.", report.vulkan);
+            break;
+        case WGPUBackendType_OpenGLES:
+        case WGPUBackendType_OpenGL:
+            printHubReport("\tgl.", report.gl);
+            break;
+        defualt:
+            fmt::println("[WEngine]::[WARN]: There is no such backend type!");
+    }
+
+    fmt::println("--------------------------------------------------------------------------------------------");
+}
+
+void WEngine::glfwKeyCallback(GLFWwindow *window, int32_t key, int32_t scancode, int32_t action, int32_t mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
+
+    if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+        WEngine *engine = (WEngine *)glfwGetWindowUserPointer(window);
+        engine->printWGPUReport();
+    }
 }
 
-void WEngine::resizeGlfwFramebuffer(GLFWwindow *window, int width, int height) {
+void WEngine::glfwFramebuffersizeCallback(GLFWwindow *window, int32_t width, int32_t height) {
     if (width == 0 || height == 0) {
         return;
     }
 
     WEngine &engine = *(WEngine *)glfwGetWindowUserPointer(window);
+
     engine.width = width;
     engine.height = height;
+    engine.config.width = width;
+    engine.config.height = height;
 
-    engine.config.width = engine.width;
-    engine.config.height = engine.height;
-
+    engine.depthTexture = WTexture::GetDepthTexture(engine.device, engine.width, engine.height);
     wgpuSurfaceConfigure(engine.surface, &engine.config);
-
-    engine.depthTexture = WTexture::GetDepthTexture(engine.device, WGPUExtent3D{(uint32_t)width, (uint32_t)height, 1});
 }
 
-WGPUShaderModule WEngine::shaderFromFile(WGPUDevice device, const char *path) {
+void WEngine::wgpuLogCallback(WGPULogLevel level, const char *message, void *userdata) {
+    const char *levelStr = "";
+    switch (level) {
+        case WGPULogLevel_Error:
+            levelStr = "[WEngine]::[ERROR]::[WGPU]: ";
+            break;
+        case WGPULogLevel_Info:
+            levelStr = "[WEngine]::[INFO]::[WGPU]: ";
+            break;
+        case WGPULogLevel_Debug:
+            levelStr = "[WEngine]::[DEBUG]::[WGPU]: ";
+            break;
+        case WGPULogLevel_Warn:
+            levelStr = "[WEngine]::[WARN]::[WGPU]: ";
+            break;
+        case WGPULogLevel_Trace:
+            levelStr = "[WEngine]::[TRACE]::[WGPU]: ";
+            break;
+        default:
+            levelStr = "[WEngine]::[UNKNOWN_LEVEL]: ";
+    }
+    fmt::println("{}{}", levelStr, message);
+}
+
+WGPUShaderModule WEngine::shaderFromWgslFile(WGPUDevice device, std::string path) {
     std::ifstream file{path};
 
     if (!file.is_open()) {
-        throw std::runtime_error(fmt::format("Can not open shader in this path: {}", path));
+        throw std::exception(fmt::format("[WEngine]::[ERROR]: Failed to open shader file from path: {}", path).c_str());
     }
-
     std::stringstream shaderStream;
     shaderStream << file.rdbuf();
     file.close();
+
     std::string shaderCode = shaderStream.str();
 
-    WGPUShaderModuleWGSLDescriptor wgslDesc{
+    WGPUShaderModuleWGSLDescriptor wgslDescriptor{
         .chain = WGPUChainedStruct{
             .sType = WGPUSType_ShaderModuleWGSLDescriptor,
         },
         .code = shaderCode.c_str(),
     };
-    WGPUShaderModuleDescriptor shaderDesc{
-        .nextInChain = (const WGPUChainedStruct *)&wgslDesc,
-        .label = path,
+    WGPUShaderModuleDescriptor shaderDescriptor{
+        .nextInChain = (const WGPUChainedStruct *)&wgslDescriptor,
+        .label = path.c_str(),
     };
-    WGPUShaderModule shader = wgpuDeviceCreateShaderModule(device, &shaderDesc);
-    return shader;
+
+    return wgpuDeviceCreateShaderModule(device, &shaderDescriptor);
 }

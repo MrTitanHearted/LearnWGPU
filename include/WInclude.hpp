@@ -49,3 +49,5 @@
 #else
 #error "Unknown Platform!"
 #endif
+
+#include <WTypes.hpp>

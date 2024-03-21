@@ -23,11 +23,12 @@ find_package(wgpu CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
+find_package(assimp CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp" "include/*.hpp")
 add_executable(${PROJECT} ${SOURCES})
 target_link_libraries(${PROJECT}
-    PRIVATE WebGPU::WebGPU glfw fmt::fmt imgui::imgui
+    PRIVATE WebGPU::WebGPU glfw fmt::fmt imgui::imgui assimp::assimp
 )
 target_include_directories(${PROJECT} PRIVATE ${Stb_INCLUDE_DIR})

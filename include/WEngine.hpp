@@ -1,14 +1,13 @@
 #pragma once
 
 #include <WInclude.hpp>
-#include <WTexture.hpp>
 
 class WEngine {
    public:
     WEngine(const WEngine &) = delete;
     WEngine &operator=(const WEngine &) = delete;
 
-    static void Init();
+    static void Initialize();
     static void Shutdown();
 
     static WEngine &GetInstance();
@@ -30,16 +29,23 @@ class WEngine {
     WGPUQueue queue;
     WGPUSurfaceConfiguration config;
 
-    WTexture depthTexture;
-
     WGPULimits limits;
+
+    WTexture depthTexture;
 
     WEngine();
     ~WEngine();
 
     void presentFrame(std::function<void(WGPUTextureView)> frame);
+    void setupLogging(WGPULogLevel level = WGPULogLevel_Warn) const;
+    void printWGPUReport() const;
 
-    static void handleGlfwKey(GLFWwindow *window, int key, int scancode, int action, int mods);
-    static void resizeGlfwFramebuffer(GLFWwindow *window, int width, int height);
-    static WGPUShaderModule shaderFromFile(WGPUDevice device, const char *path);
+    static void glfwKeyCallback(GLFWwindow *window, int32_t key, int32_t scancode, int32_t action, int32_t mods);
+    static void glfwFramebuffersizeCallback(GLFWwindow *window, int32_t width, int32_t height);
+    
+    static void wgpuLogCallback(WGPULogLevel level, const char *message, void *userdata);
+    
+    static WGPUShaderModule shaderFromWgslFile(WGPUDevice device, std::string path);
+
+    
 };
