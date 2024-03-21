@@ -121,6 +121,30 @@ WTexture WTexture::fromFileAsRgba8(WGPUDevice device, std::string path, bool fli
         .setFormat(WGPUTextureFormat_RGBA8Unorm)
         .build(device, size, 4, data, 4 * sizeof(stbi_uc));
 }
+WTexture WTexture::fromMemoryAsRgba8(WGPUDevice device, const void *data, size_t size, bool flipUV) {
+    stbi_set_flip_vertically_on_load(flipUV);
+
+    int32_t width, height, channels;
+    stbi_uc *stbData = stbi_load_from_memory((const stbi_uc *)data, size, &width, &height, &channels, STBI_rgb_alpha);
+
+    if (data == nullptr) {
+        throw std::exception(fmt::format("[WEngine]::[ERROR]: Failed to load texture from memory!").c_str());
+    }
+
+    WGPUExtent3D extent{
+        .width = (uint32_t)width,
+        .height = (uint32_t)height,
+        .depthOrArrayLayers = 1,
+    };
+
+    if (flipUV) {
+        stbi_set_flip_vertically_on_load(!flipUV);
+    }
+
+    return WTextureBuilder::New()
+        .setFormat(WGPUTextureFormat_RGBA8Unorm)
+        .build(device, extent, 4, stbData, 4 * sizeof(stbi_uc));
+}
 
 WUniformBuffer WUniformBuffer::New(WGPUDevice device, void *data, size_t size) {
     WGPUBufferDescriptor desc{

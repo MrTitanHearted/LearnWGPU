@@ -150,12 +150,8 @@ WGPUSampler WSamplerBuilder::build(WGPUDevice device) {
     return wgpuDeviceCreateSampler(device, &desc);
 }
 
-WBindGroupBuilder &WBindGroupBuilder::addBindingSampler(uint32_t binding, WGPUSampler sampler, WGPUShaderStageFlags visibility) {
-    entries.push_back(WGPUBindGroupEntry{
-        .binding = binding,
-        .sampler = sampler,
-    });
-    layoutEntries.push_back(WGPUBindGroupLayoutEntry{
+WBindGroupLayoutBuilder &WBindGroupLayoutBuilder::addBindingSampler(uint32_t binding, WGPUShaderStageFlags visibility) {
+    entries.push_back(WGPUBindGroupLayoutEntry{
         .binding = binding,
         .visibility = visibility,
         .sampler = WGPUSamplerBindingLayout{
@@ -164,12 +160,10 @@ WBindGroupBuilder &WBindGroupBuilder::addBindingSampler(uint32_t binding, WGPUSa
     });
     return *this;
 }
-WBindGroupBuilder &WBindGroupBuilder::addBindingTexture(uint32_t binding, WGPUTextureView texture, WGPUTextureViewDimension viewDimension, WGPUShaderStageFlags visibility) {
-    entries.push_back(WGPUBindGroupEntry{
-        .binding = binding,
-        .textureView = texture,
-    });
-    layoutEntries.push_back(WGPUBindGroupLayoutEntry{
+WBindGroupLayoutBuilder &WBindGroupLayoutBuilder::addBindingTexture(uint32_t binding,
+                                                                    WGPUTextureViewDimension viewDimension,
+                                                                    WGPUShaderStageFlags visibility) {
+    entries.push_back(WGPUBindGroupLayoutEntry{
         .binding = binding,
         .visibility = visibility,
         .texture = WGPUTextureBindingLayout{
@@ -180,13 +174,8 @@ WBindGroupBuilder &WBindGroupBuilder::addBindingTexture(uint32_t binding, WGPUTe
     });
     return *this;
 }
-WBindGroupBuilder &WBindGroupBuilder::addBindingUniform(uint32_t binding, WGPUBuffer buffer, size_t size, WGPUShaderStageFlags visibility) {
-    entries.push_back(WGPUBindGroupEntry{
-        .binding = binding,
-        .buffer = buffer,
-        .size = size,
-    });
-    layoutEntries.push_back(WGPUBindGroupLayoutEntry{
+WBindGroupLayoutBuilder &WBindGroupLayoutBuilder::addBindingUniform(uint32_t binding, WGPUShaderStageFlags visibility) {
+    entries.push_back(WGPUBindGroupLayoutEntry{
         .binding = binding,
         .visibility = visibility,
         .buffer = WGPUBufferBindingLayout{
@@ -196,20 +185,46 @@ WBindGroupBuilder &WBindGroupBuilder::addBindingUniform(uint32_t binding, WGPUBu
     });
     return *this;
 }
+WGPUBindGroupLayout WBindGroupLayoutBuilder::build(WGPUDevice device) {
+    WGPUBindGroupLayoutDescriptor desc{
+        .entryCount = entries.size(),
+        .entries = entries.data(),
+    };
+    return wgpuDeviceCreateBindGroupLayout(device, &desc);
+}
+
+WBindGroupBuilder &WBindGroupBuilder::addBindingSampler(uint32_t binding, WGPUSampler sampler, WGPUShaderStageFlags visibility) {
+    entries.push_back(WGPUBindGroupEntry{
+        .binding = binding,
+        .sampler = sampler,
+    });
+    layoutBuilder.addBindingSampler(binding, visibility);
+    return *this;
+}
+WBindGroupBuilder &WBindGroupBuilder::addBindingTexture(uint32_t binding, WGPUTextureView texture, WGPUTextureViewDimension viewDimension, WGPUShaderStageFlags visibility) {
+    entries.push_back(WGPUBindGroupEntry{
+        .binding = binding,
+        .textureView = texture,
+    });
+    layoutBuilder.addBindingTexture(binding, viewDimension, visibility);
+    return *this;
+}
+WBindGroupBuilder &WBindGroupBuilder::addBindingUniform(uint32_t binding, WGPUBuffer buffer, size_t size, WGPUShaderStageFlags visibility) {
+    entries.push_back(WGPUBindGroupEntry{
+        .binding = binding,
+        .buffer = buffer,
+        .size = size,
+    });
+    layoutBuilder.addBindingUniform(binding, visibility);
+    return *this;
+}
 WBindGroupBuilder &WBindGroupBuilder::addBindingUniform(uint32_t binding, WUniformBuffer buffer, WGPUShaderStageFlags visibility) {
     entries.push_back(WGPUBindGroupEntry{
         .binding = binding,
         .buffer = buffer,
         .size = buffer.getSize(),
     });
-    layoutEntries.push_back(WGPUBindGroupLayoutEntry{
-        .binding = binding,
-        .visibility = visibility,
-        .buffer = WGPUBufferBindingLayout{
-            .type = WGPUBufferBindingType_Uniform,
-            .hasDynamicOffset = false,
-        },
-    });
+    layoutBuilder.addBindingUniform(binding, visibility);
     return *this;
 }
 WBindGroup WBindGroupBuilder::build(WGPUDevice device) {
@@ -229,11 +244,7 @@ WGPUBindGroup WBindGroupBuilder::buildBindGroup(WGPUDevice device, WGPUBindGroup
     return wgpuDeviceCreateBindGroup(device, &desc);
 }
 WGPUBindGroupLayout WBindGroupBuilder::buildBindGroupLayout(WGPUDevice device) {
-    WGPUBindGroupLayoutDescriptor desc{
-        .entryCount = layoutEntries.size(),
-        .entries = layoutEntries.data(),
-    };
-    return wgpuDeviceCreateBindGroupLayout(device, &desc);
+    return layoutBuilder.build(device);
 }
 
 WRenderBufferBuilder &WRenderBufferBuilder::setIndices(const std::vector<uint32_t> &indices) {
@@ -245,8 +256,20 @@ WRenderBuffer WRenderBufferBuilder::build(WGPUDevice device) {
     return WRenderBuffer::New(device, vertices, verticesSize, verticesCount, indices, indicesCount);
 }
 
+WPipelineLayoutBuilder &WPipelineLayoutBuilder::addBindGroupLayout(WGPUBindGroupLayout layout) {
+    bindGroupLayouts.push_back(layout);
+    return *this;
+}
+WGPUPipelineLayout WPipelineLayoutBuilder::build(WGPUDevice device) {
+    WGPUPipelineLayoutDescriptor desc{
+        .bindGroupLayoutCount = bindGroupLayouts.size(),
+        .bindGroupLayouts = bindGroupLayouts.data(),
+    };
+    return wgpuDeviceCreatePipelineLayout(device, &desc);
+}
+
 WRenderPipelineBuilder &WRenderPipelineBuilder::addBindGroupLayout(WGPUBindGroupLayout layout) {
-    this->bindGroupLayouts.push_back(layout);
+    this->layoutBuilder.addBindGroupLayout(layout);
     return *this;
 }
 WRenderPipelineBuilder &WRenderPipelineBuilder::addColorTarget(WGPUTextureFormat format) {
@@ -333,11 +356,7 @@ WGPURenderPipeline WRenderPipelineBuilder::buildRenderPipeline(WGPUDevice device
     return wgpuDeviceCreateRenderPipeline(device, &desc);
 }
 WGPUPipelineLayout WRenderPipelineBuilder::buildPipelineLayout(WGPUDevice device) {
-    WGPUPipelineLayoutDescriptor desc{
-        .bindGroupLayoutCount = bindGroupLayouts.size(),
-        .bindGroupLayouts = bindGroupLayouts.data(),
-    };
-    return wgpuDeviceCreatePipelineLayout(device, &desc);
+    return layoutBuilder.build(device);
 }
 
 WRenderBundleBuilder &WRenderBundleBuilder::setRenderBuffer(WRenderBuffer renderBuffer) {

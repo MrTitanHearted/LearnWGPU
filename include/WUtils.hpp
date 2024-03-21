@@ -80,18 +80,34 @@ class WSamplerBuilder {
     };
 };
 
+class WBindGroupLayoutBuilder {
+   public:
+    static inline WBindGroupLayoutBuilder New() { return WBindGroupLayoutBuilder(); }
+
+    WBindGroupLayoutBuilder &addBindingSampler(uint32_t binding,
+                                               WGPUShaderStageFlags visibility = WGPUShaderStage_Fragment);
+    WBindGroupLayoutBuilder &addBindingTexture(uint32_t binding,
+                                               WGPUTextureViewDimension viewDimension = WGPUTextureViewDimension_2D,
+                                               WGPUShaderStageFlags visibility = WGPUShaderStage_Fragment);
+    WBindGroupLayoutBuilder &addBindingUniform(uint32_t binding,
+                                               WGPUShaderStageFlags visibility = WGPUShaderStage_Vertex |
+                                                                                 WGPUShaderStage_Fragment |
+                                                                                 WGPUShaderStage_Compute);
+    WGPUBindGroupLayout build(WGPUDevice device);
+
+   private:
+    std::vector<WGPUBindGroupLayoutEntry> entries;
+};
+
 class WBindGroupBuilder {
    public:
     static inline WBindGroupBuilder New() { return WBindGroupBuilder(); }
 
     WBindGroupBuilder &addBindingSampler(uint32_t binding, WGPUSampler sampler,
-                                         WGPUShaderStageFlags visibility = WGPUShaderStage_Vertex |
-                                                                           WGPUShaderStage_Fragment |
-                                                                           WGPUShaderStage_Compute);
+                                         WGPUShaderStageFlags visibility = WGPUShaderStage_Fragment);
     WBindGroupBuilder &addBindingTexture(uint32_t binding, WGPUTextureView texture,
                                          WGPUTextureViewDimension viewDimension = WGPUTextureViewDimension_2D,
-                                         WGPUShaderStageFlags visibility = WGPUShaderStage_Fragment |
-                                                                           WGPUShaderStage_Compute);
+                                         WGPUShaderStageFlags visibility = WGPUShaderStage_Fragment);
     WBindGroupBuilder &addBindingUniform(uint32_t binding, WGPUBuffer buffer, size_t size,
                                          WGPUShaderStageFlags visibility = WGPUShaderStage_Vertex |
                                                                            WGPUShaderStage_Fragment |
@@ -109,7 +125,7 @@ class WBindGroupBuilder {
 
    private:
     std::vector<WGPUBindGroupEntry> entries;
-    std::vector<WGPUBindGroupLayoutEntry> layoutEntries;
+    WBindGroupLayoutBuilder layoutBuilder;
 };
 
 class WRenderBufferBuilder {
@@ -135,6 +151,18 @@ class WRenderBufferBuilder {
     size_t indicesCount;
 };
 
+class WPipelineLayoutBuilder {
+   public:
+    static inline WPipelineLayoutBuilder New() { return WPipelineLayoutBuilder(); }
+
+    WPipelineLayoutBuilder &addBindGroupLayout(WGPUBindGroupLayout layout);
+
+    WGPUPipelineLayout build(WGPUDevice device);
+
+   private:
+    std::vector<WGPUBindGroupLayout> bindGroupLayouts;
+};
+
 class WRenderPipelineBuilder {
    public:
     static inline WRenderPipelineBuilder New() { return WRenderPipelineBuilder(); }
@@ -153,7 +181,8 @@ class WRenderPipelineBuilder {
     WGPUPipelineLayout buildPipelineLayout(WGPUDevice device);
 
    private:
-    std::vector<WGPUBindGroupLayout> bindGroupLayouts;
+    WPipelineLayoutBuilder layoutBuilder;
+
     WGPURenderPipelineDescriptor desc;
     std::vector<WVertexLayout> vertexLayouts;
     std::vector<WGPUColorTargetState> colorTargetStates;

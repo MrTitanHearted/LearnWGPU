@@ -58,6 +58,7 @@ class WTexture {
     inline operator WGPUTextureDescriptor() const { return desc; };
 
     static WTexture fromFileAsRgba8(WGPUDevice device, std::string path, bool flipUV = true);
+    static WTexture fromMemoryAsRgba8(WGPUDevice device, const void *data, size_t size, bool flipUV = true);
 
    private:
     WGPUTexture texture;

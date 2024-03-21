@@ -1,30 +1,13 @@
 #include <WEngine.hpp>
 
 #include <WUtils.hpp>
+#include <WModel.hpp>
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
 
 #include <glm/gtc/matrix_transform.hpp>
-
-struct WVertex {
-    glm::vec3 pos;
-    glm::vec3 color;
-    glm::vec2 uv;
-
-    static WVertex New(float x, float y, float z, float r, float g, float b, float u, float v) {
-        return WVertex{.pos = glm::vec3(x, y, z), .color = glm::vec3(r, g, b), .uv = glm::vec2(u, v)};
-    }
-    static WVertexLayout desc();
-};
-
-WVertexLayout WVertex::desc() {
-    return WVertexLayout::New(sizeof(WVertex))
-        .addAttribute(WGPUVertexFormat_Float32x3, offsetof(WVertex, pos), 0)
-        .addAttribute(WGPUVertexFormat_Float32x3, offsetof(WVertex, color), 1)
-        .addAttribute(WGPUVertexFormat_Float32x2, offsetof(WVertex, uv), 2);
-}
 
 WEngine *WEngine::engine = nullptr;
 
@@ -54,51 +37,31 @@ WEngine &WEngine::GetInstance() {
 
 void WEngine::run() {
     WGPUShaderModule shader = shaderFromWgslFile(device, "assets/shaders/shader.wgsl");
-
-        std::vector<WVertex> vertices{
-            WVertex::New(-0.5, -0.5, 0.8, 1.0, 0.0, 0.0, 0.0, 0.0),
-            WVertex::New(-0.5, 0.5, 0.8, 0.0, 1.0, 0.0, 0.0, 1.0),
-            WVertex::New(0.5, 0.5, 0.8, 0.0, 0.0, 1.0, 1.0, 1.0),
-            WVertex::New(0.5, -0.5, 0.8, 1.0, 1.0, 0.0, 1.0, 0.0),
-        };
-        std::vector<uint32_t> indices{0, 1, 2, 0, 2, 3};
-
-    WRenderBuffer renderBuffer =
-        WRenderBufferBuilder::New()
-            .setVertices(vertices)
-            .setIndices(indices)
-            .build(device);
+    WGPUShaderModule modelShader = shaderFromWgslFile(device, "assets/shaders/model.wgsl");
 
     WGPUSampler sampler = WSamplerBuilder::New().build(device);
-    WTexture texture = WTexture::fromFileAsRgba8(device, "assets/textures/awesomeface.png");
-    glm::mat4 uniformData{1.0};
-    WUniformBuffer uniformBuffer = WUniformBuffer::New(device, &uniformData, sizeof(uniformData));
 
-    WBindGroup bindGroup = 
+    struct Camera {
+        glm::mat4 projection{1.0f};
+        glm::mat4 view{1.0f};
+    };
+
+    Camera cameraData{};
+    WUniformBuffer cameraBuffer = WUniformBuffer::New(device, &cameraData, sizeof(Camera));
+    WBindGroup globalGroup =
         WBindGroupBuilder::New()
-        .addBindingSampler(0, sampler)
-        .addBindingTexture(1, texture)
-        .addBindingUniform(2, uniformBuffer)
-        .build(device);
-
-    WRenderPipeline pipeline =
-        WRenderPipelineBuilder::New()
-            .addBindGroupLayout(bindGroup)
-            .setVertexState(shader)
-            .setFragmentState(shader)
-            .addColorTarget(config.format)
-            .addVertexBufferLayout(WVertex::desc())
-            .setDefaultDepthState()
+            .addBindingSampler(0, sampler)
+            .addBindingUniform(1, cameraBuffer)
             .build(device);
 
-    WRenderBundle renderBundle =
-        WRenderBundleBuilder::New()
-            .addBindGroup(bindGroup)
-            .setRenderPipeline(pipeline)
-            .setRenderBuffer(renderBuffer)
-            .addColorFormat(config.format)
-            .setDefaultDepthFormat()
-            .build(device);
+    WModel model =
+        WModelBuilder::New()
+            .setPath("assets/models/bob/model.dae")
+            .setColorTarget(config.format)
+            .setGlobalBindGroup(globalGroup)
+            .setVertexShader(modelShader)
+            .setFragmentShader(modelShader)
+            .buildFromFile(device);
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -113,14 +76,12 @@ void WEngine::run() {
                     .setDepthAttachment(WDepthStencilAttachment::New(depthTexture))
                     .build(commandEncoder);
 
-            renderBundle.render(encoder);
+            model.render(encoder);
 
             wgpuRenderPassEncoderEnd(encoder);
 
             commandBuffers.push_back(wgpuCommandEncoderFinish(commandEncoder, nullptr));
-
             wgpuQueueSubmit(queue, commandBuffers.size(), commandBuffers.data());
-
             for (const WGPUCommandBuffer &commandBuffer : commandBuffers) {
                 wgpuCommandBufferRelease(commandBuffer);
             }
@@ -130,7 +91,7 @@ void WEngine::run() {
 }
 
 WEngine::WEngine() {
-    setupLogging();
+    // setupLogging();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);

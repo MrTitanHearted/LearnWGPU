@@ -46,6 +46,4 @@ class WEngine {
     static void wgpuLogCallback(WGPULogLevel level, const char *message, void *userdata);
     
     static WGPUShaderModule shaderFromWgslFile(WGPUDevice device, std::string path);
-
-    
 };
