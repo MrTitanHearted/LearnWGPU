@@ -46,7 +46,10 @@ void WEngine::run() {
         glm::mat4 view{1.0f};
     };
 
-    Camera cameraData{};
+    Camera cameraData{
+        .projection = camera.getProjectionMatrix((float)width / (float)height),
+        .view = camera.getViewMatrix(),
+    };
     WUniformBuffer cameraBuffer = WUniformBuffer::New(device, &cameraData, sizeof(Camera));
     WBindGroup globalGroup =
         WBindGroupBuilder::New()
@@ -63,8 +66,35 @@ void WEngine::run() {
             .setFragmentShader(modelShader)
             .buildFromFile(device);
 
+    float lastFrame = 0.0f;
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        float currentFrame = glfwGetTime();
+        float dt = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+            camera.processCameraMovement(WCameraMovement::WORLD_FORWARD, dt);
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+            camera.processCameraMovement(WCameraMovement::WORLD_BACKWARD, dt);
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+            camera.processCameraMovement(WCameraMovement::RIGHT, dt);
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+            camera.processCameraMovement(WCameraMovement::LEFT, dt);
+        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+            camera.processCameraMovement(WCameraMovement::WORLD_DOWN, dt);
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+            camera.processCameraMovement(WCameraMovement::WORLD_UP, dt);
+
+        cameraData.projection = camera.getProjectionMatrix((float)width / (float)height);
+        cameraData.view = camera.getViewMatrix();
+        cameraBuffer.update(queue, &cameraData);
 
         presentFrame([&](WGPUTextureView frame) {
             WGPUCommandEncoder commandEncoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
@@ -98,6 +128,8 @@ WEngine::WEngine() {
     glfwSetWindowUserPointer(window, this);
     glfwSetKeyCallback(window, glfwKeyCallback);
     glfwSetFramebufferSizeCallback(window, glfwFramebuffersizeCallback);
+    glfwSetCursorPosCallback(window, glfwCursorPosCallback);
+    glfwSetScrollCallback(window, glfwScrollCallabck);
 
     WGPUInstanceExtras instanceExtras{
         .chain = WGPUChainedStruct{
@@ -316,6 +348,16 @@ void WEngine::glfwFramebuffersizeCallback(GLFWwindow *window, int32_t width, int
 
     engine.depthTexture = WTexture::GetDepthTexture(engine.device, engine.width, engine.height);
     wgpuSurfaceConfigure(engine.surface, &engine.config);
+}
+
+void WEngine::glfwCursorPosCallback(GLFWwindow *window, double x, double y) {
+    WEngine *engine = (WEngine *)glfwGetWindowUserPointer(window);
+    engine->camera.processMouseMovement(x, y);
+}
+
+void WEngine::glfwScrollCallabck(GLFWwindow *window, double x, double y) {
+    WEngine *engine = (WEngine *)glfwGetWindowUserPointer(window);
+    engine->camera.processMouseScroll(y);
 }
 
 void WEngine::wgpuLogCallback(WGPULogLevel level, const char *message, void *userdata) {

@@ -2,6 +2,8 @@
 
 #include <WInclude.hpp>
 
+#include <WCamera.hpp>
+
 class WEngine {
    public:
     WEngine(const WEngine &) = delete;
@@ -28,10 +30,10 @@ class WEngine {
     WGPUDevice device;
     WGPUQueue queue;
     WGPUSurfaceConfiguration config;
-
     WGPULimits limits;
-
     WTexture depthTexture;
+
+    WCameraManager camera{600, 500};
 
     WEngine();
     ~WEngine();
@@ -42,8 +44,10 @@ class WEngine {
 
     static void glfwKeyCallback(GLFWwindow *window, int32_t key, int32_t scancode, int32_t action, int32_t mods);
     static void glfwFramebuffersizeCallback(GLFWwindow *window, int32_t width, int32_t height);
-    
+    static void glfwCursorPosCallback(GLFWwindow *window, double x, double y);
+    static void glfwScrollCallabck(GLFWwindow *window, double x, double y);
+
     static void wgpuLogCallback(WGPULogLevel level, const char *message, void *userdata);
-    
+
     static WGPUShaderModule shaderFromWgslFile(WGPUDevice device, std::string path);
 };

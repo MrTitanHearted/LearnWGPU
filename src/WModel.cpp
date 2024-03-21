@@ -82,7 +82,7 @@ class WTextureCache {
    public:
     static WTexture New(WGPUDevice device, std::string path) {
         if (cache.find(path) == cache.end()) {
-            WTexture texture = WTexture::fromFileAsRgba8(device, path);
+            WTexture texture = WTexture::fromFileAsRgba8(device, path, false);
             cache[path] = texture;
             return texture;
         } else {
@@ -91,7 +91,7 @@ class WTextureCache {
     }
     static WTexture New(WGPUDevice device, std::string path, void *data, size_t size) {
         if (cache.find(path) == cache.end()) {
-            WTexture texture = WTexture::fromMemoryAsRgba8(device, data, size);
+            WTexture texture = WTexture::fromMemoryAsRgba8(device, data, size, false);
             cache[path] = texture;
             return texture;
         } else {
