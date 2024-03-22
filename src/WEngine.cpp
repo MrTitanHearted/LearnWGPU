@@ -59,12 +59,16 @@ void WEngine::run() {
 
     WModel model =
         WModelBuilder::New()
-            .setPath("assets/models/bob/model.dae")
+            .setPath("assets/models/vanguard/punching.dae")
             .setColorTarget(config.format)
             .setGlobalBindGroup(globalGroup)
             .setVertexShader(modelShader)
             .setFragmentShader(modelShader)
             .buildFromFile(device);
+
+    glm::mat4 modelData{1.0f};
+    modelData = glm::scale(modelData, glm::vec3(1.0 / 20.0));
+    model.updateModel(queue, modelData);
 
     float lastFrame = 0.0f;
     while (!glfwWindowShouldClose(window)) {
