@@ -1,8 +1,11 @@
 #pragma once
 
 #include <WInclude.hpp>
-
 #include <WCamera.hpp>
+
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_wgpu.hpp>
 
 class WEngine {
    public:
@@ -35,8 +38,17 @@ class WEngine {
 
     WCameraManager camera{600, 500};
 
+    glm::mat4 modelData{1.0f};
+    float scale = 1.0f / 20.f;
+
+    float dt;
+
     WEngine();
     ~WEngine();
+
+    void initImGui();
+    void shutdownImGui();
+    void updateImGui(WGPURenderPassEncoder encoder);
 
     void presentFrame(std::function<void(WGPUTextureView)> frame);
     void setupLogging(WGPULogLevel level = WGPULogLevel_Warn) const;

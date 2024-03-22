@@ -66,8 +66,7 @@ void WEngine::run() {
             .setFragmentShader(modelShader)
             .buildFromFile(device);
 
-    glm::mat4 modelData{1.0f};
-    modelData = glm::scale(modelData, glm::vec3(1.0 / 20.0));
+    modelData = glm::scale(modelData, glm::vec3(scale));
     model.updateModel(queue, modelData);
 
     float lastFrame = 0.0f;
@@ -75,8 +74,11 @@ void WEngine::run() {
         glfwPollEvents();
 
         float currentFrame = glfwGetTime();
-        float dt = currentFrame - lastFrame;
+        dt = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        modelData = glm::scale(glm::mat4{1.0f}, glm::vec3(scale));
+        model.updateModel(queue, modelData);
 
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -109,9 +111,9 @@ void WEngine::run() {
                     .addColorTarget(WColorAttachment::New(frame).setClearColor(0.2, 0.3, 0.3, 1.0))
                     .setDepthAttachment(WDepthStencilAttachment::New(depthTexture))
                     .build(commandEncoder);
-
             model.render(encoder);
 
+            updateImGui(encoder);
             wgpuRenderPassEncoderEnd(encoder);
 
             commandBuffers.push_back(wgpuCommandEncoderFinish(commandEncoder, nullptr));
@@ -212,9 +214,13 @@ WEngine::WEngine() {
     limits = supportedLimits.limits;
 
     depthTexture = WTexture::GetDepthTexture(device, width, height);
+
+    initImGui();
 }
 
 WEngine::~WEngine() {
+    shutdownImGui();
+
     wgpuQueueRelease(queue);
     wgpuDeviceRelease(device);
     wgpuAdapterRelease(adapter);
@@ -223,6 +229,42 @@ WEngine::~WEngine() {
 
     glfwDestroyWindow(window);
     window = nullptr;
+}
+
+void WEngine::initImGui() {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::GetIO();
+
+    ImGui_ImplWGPU_InitInfo info{};
+    info.Device = device;
+    info.RenderTargetFormat = config.format;
+    info.DepthStencilFormat = WGPUTextureFormat_Depth32Float;
+
+    ImGui_ImplGlfw_InitForOther(window, true);
+    ImGui_ImplWGPU_Init(&info);
+}
+
+void WEngine::shutdownImGui() {
+    ImGui_ImplGlfw_Shutdown();
+    ImGui_ImplWGPU_Shutdown();
+}
+
+void WEngine::updateImGui(WGPURenderPassEncoder encoder) {
+    ImGui_ImplWGPU_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    if (ImGui::Begin("Scale the model")) {
+        ImGui::SliderFloat("Scale", &scale, 1.0f / 50.0f, 1.0f);
+        ImGui::Text("FPS: %d, ms: %f", (uint32_t)(1.0f/dt), dt);
+
+        ImGui::End();
+    }
+
+    ImGui::EndFrame();
+    ImGui::Render();
+    ImGui_ImplWGPU_RenderDrawData(ImGui::GetDrawData(), encoder);
 }
 
 void WEngine::presentFrame(std::function<void(WGPUTextureView)> frame) {

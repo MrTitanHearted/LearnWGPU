@@ -13,3 +13,5 @@ _deps
 build/
 .vscode/
 wgpu-cmake/
+
+imgui.ini
